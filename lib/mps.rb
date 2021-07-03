@@ -2,7 +2,7 @@
 
 require_relative "mps/version"
 
-module Mps
+module MPS
   class Error < StandardError; end
   # Your code goes here...
 end

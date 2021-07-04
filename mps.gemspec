@@ -4,7 +4,7 @@ require_relative "lib/mps/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "mps"
-  spec.version       = Mps::VERSION
+  spec.version       = MPS::VERSION
   spec.authors       = ["mash-97"]
   spec.email         = ["mahimnhd97@gmail.com"]
 

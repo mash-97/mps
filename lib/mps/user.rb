@@ -41,7 +41,11 @@ module MPS
 
     def newNote(note_name, content)
       current_time = TIME_CLIPPER.call(Time.now)
-      folder_path = User.getFormattedFolderPath(current_time)
+      folder_path = getFormattedFolderPath(current_time)
+
+      FileUtils.mkdir_p(folder_path) if not Dir.exist?(folder_path)
+
+
       file_path = File.join(folder_path, note_name+"."+MPS_EXT)
       if not File.exist?(file_path) then
         File.open(file_path, "w"){|file|
@@ -54,24 +58,26 @@ module MPS
     end
 
     def noteNameExist?(time, note_name)
-      folder_path = User.getFormattedFolderPath(time)
       getNotes(time).each do |note|
         return true if note[:note_name]==note_name
       end
       return false
     end
 
-    def getNotes(stime, etime=Time.new(stime.year, stime.month, stime.day+1))
+    def getNotes(stime=Time.new(2000, 1, 1), etime=Time.new(stime.year, stime.month, stime.day+1))
       stime = TIME_CLIPPER.call(stime)
       etime = TIME_CLIPPER.call(etime)
-      folder_path = User.getFormattedFolderPath(time)
       notes = []
 
       if File.exist?(@mps_record_file) then
+        puts("reading record file...")
         File.readlines(@mps_record_file).each do |record|
-          record_data =  RECORD_DATA_CLIPPER.call(record)
+          puts("record-> #{record}")
+          record_data =  RECORD_DATA_CLIPPER.call(record.chomp)
+          next if not record_data
           time = Time.new(record_data[:year], record_data[:month], record_data[:day])
           notes << record_data if time>=stime and time<etime
+          puts("-------> after record: #{record}: #{notes.to_s}")
         end
       end
 

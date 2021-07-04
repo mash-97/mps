@@ -15,10 +15,11 @@ module MPS
     $~[1]
   }
 
-  RECORD_LOGGER_REGEXP = /\[([0-9]{4}),\s*?([0-9]{2}),\s*?([0-9]{2})\]->\[(.+?),\s*?(.+?)\]/
+  RECORD_LOGGER_REGEXP = /\[([0-9]{4}),\s*?([0-9]{1,2}),\s*?([0-9]{1,2})\]->\[(.+?),\s*?(.+?)\]/
   RECORD_DATA_CLIPPER = ->(record_string){
     RECORD_LOGGER_REGEXP=~record_string
-    [:year, :month, :day, :note_name, :note_path].zip($~[1..5]).to_h
+    puts("-------> record_string: #{record_string} : It's nil!") if not $~
+    $~==nil ? nil : [:year, :month, :day, :note_name, :note_path].zip($~[1..5]).to_h
   }
   RECORD_LOGGER_TWISTER = ->(time, note_name, note_path){
     "[#{time.year}, #{time.month}, #{time.day}]->[#{note_name}, #{note_path}]"

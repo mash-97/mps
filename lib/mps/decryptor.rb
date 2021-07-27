@@ -12,7 +12,7 @@ module MPS
 
     def decrypt(content)
 
-      return   @cipher.update(content)+@cipher.final
+      return @cipher.update(content)+@cipher.final
     end
   end
 end

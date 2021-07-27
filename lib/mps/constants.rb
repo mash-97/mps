@@ -7,7 +7,7 @@ module MPS
   MD5_DIGEST = Digest::MD5.new
   SHA1_DIGEST = Digest::SHA1.new
   HOME_DIR = Dir.home
-  MPS_CONFIG_FILE = File.join(HOME_DIR, ".mps_config")
+  MPS_CONFIG_FILE = File.join(HOME_DIR, ".mps_config.yml")
   DEFAULT_MPS_DIR = File.join(HOME_DIR, ".mps")
   MPS_NOTE_NAME_REGEXP = Regexp.new("^(.*)\.#{MPS_EXT}")
   MPS_NOTE_NAME_CLIPPER = ->(file_basename){

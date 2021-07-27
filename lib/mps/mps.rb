@@ -54,7 +54,7 @@ module MPS
     end
 
     def userNameExist?(username)
-      @users.include?(username)
+      @users.map{|x|x.name}.include?(username)
     end
 
   end

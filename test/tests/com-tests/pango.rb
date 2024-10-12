@@ -3,13 +3,14 @@
 require 'rubygems'
 require 'commander'
 
+
 class MyApplication
   include Commander::Methods
   # include whatever modules you need
 
   def run
     program :name, 'pango'
-    program :version, '0.0.1'
+    program :version, '1.0.2'
     program :description, 'pango is a modular dango'
 
     command :pingo do |c|
@@ -45,7 +46,8 @@ class MyApplication
         # Do something or c.when_called Pango::Commands::Pungo
       end
     end
+    run!
   end
 end
 
-MyApplication.new.run!
+MyApplication.new.run

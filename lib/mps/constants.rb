@@ -1,34 +1,41 @@
-require 'digest/md5'
-require 'digest/sha1'
-
-
+# frozen_string_literal: true
 module MPS
-  MPS_EXT = "mps"
-  MD5_DIGEST = Digest::MD5.new
-  SHA1_DIGEST = Digest::SHA1.new
-  HOME_DIR = Dir.home
-  MPS_CONFIG_FILE = File.join(HOME_DIR, ".mps_config.yml")
-  DEFAULT_MPS_DIR = File.join(HOME_DIR, ".mps")
-  MPS_NOTE_NAME_REGEXP = Regexp.new("^(.*)\.#{MPS_EXT}")
-  MPS_NOTE_NAME_CLIPPER = ->(file_basename){
-    MPS_NOTE_NAME_REGEXP=~file_basename
-    $~[1]
-  }
+  module Constants
+    # mps file extention
+    MPS_EXT = "mps"
 
-  RECORD_LOGGER_REGEXP = /\[([0-9]{4}),\s*?([0-9]{1,2}),\s*?([0-9]{1,2})\]->\[(.+?),\s*?(.+?)\]/
-  RECORD_DATA_CLIPPER = ->(record_string){
-    RECORD_LOGGER_REGEXP=~record_string
-    puts("-------> record_string: #{record_string} : It's nil!") if not $~
-    $~==nil ? nil : [:year, :month, :day, :note_name, :note_path].zip($~[1..5]).to_h
-  }
-  RECORD_LOGGER_TWISTER = ->(time, note_name, note_path){
-    "[#{time.year}, #{time.month}, #{time.day}]->[#{note_name}, #{note_path}]"
-  }
+    # user home directory
+    HOME_DIR = Dir.home
 
-  RECORD_LOGGER = ->(record_file_path, time, note_name, note_path){
-    record_file = File.open(record_file_path, "a+")
-    record_file.puts(RECORD_LOGGER_TWISTER.call(time, note_name, note_path))
-    record_file.close()
-  }
-  TIME_CLIPPER = ->(time){Time.new(time.year, time.month, time.day)}
+    # mps config default file path
+    MPS_CONFIG_FILE = File.join(HOME_DIR, ".mps_config.yml")
+
+    # default mps directory where all mps related files will be stored,
+    # including mps storage directory, config, log files etc.
+    MPS_DIR = File.join(HOME_DIR, ".mps")
+
+    # default mps storage directory, usually where the mps files 
+    # will be stored. but should configurable to any path through 
+    # config.
+    MPS_STORAGE_DIR = File.join(HOME_DIR, "mps")
+
+    # mps file name structure
+    MPS_FILE_NAME_REGEXP = Regexp.new("^((\\d{4})(\\d{2})(\\d{2}))\\.#{MPS_EXT}$")
+
+    # clip the mps filename except the extention, usually datestamp
+    __MPS_FILE_NAME_CLIPPER__ = ->(file_basename){
+      MPS_FILE_NAME_REGEXP=~file_basename
+      $~[1]
+    }
+
+    # clip datestamp with hash accessibility from the mps filename
+    __MPS_FILE_NAME_DATE_CLIPPER__ = ->(file_basename){
+      MPS_FILE_NAME_REGEXP=~file_basename
+      {
+        year: $~[2],
+        month: $~[3],
+        day: $~[4]
+      }
+    }
+  end
 end

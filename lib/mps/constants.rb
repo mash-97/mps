@@ -12,7 +12,7 @@ module MPS
     MPS_DIR = File.join(HOME_DIR, ".mps")
 
     # mps config default file path
-    MPS_CONFIG_FILE = File.join(MPS_DIR, ".mps_config.yml")
+    MPS_CONFIG_FILE = File.join(HOME_DIR, ".mps_config.yaml")
 
     # default mps storage directory, usually where the mps files 
     # will be stored. but should configurable to any path through 

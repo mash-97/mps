@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-require 'fakefs/safe'
+
 require_relative 'test_helper'
 
 
@@ -30,7 +30,6 @@ class ConstantsTest < Minitest::Test
 
   def test_mps_dir_structure_existance()
     FakeFS.with_fresh do
-      puts("#> dir.home: #{Dir.home}") 
       FileUtils.mkdir_p(MPS::Constants::MPS_STORAGE_DIR)
       FileUtils.touch(MPS::Constants::MPS_CONFIG_FILE)
       assert Dir.exist?(MPS::Constants::MPS_DIR)

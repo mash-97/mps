@@ -37,5 +37,14 @@ module MPS
         day: $~[4]
       }
     }
+
+    # default mps log path
+    MPS_LOG_FILE = File.join(MPS_DIR, "mps.log")
+
+    # default conf hash
+    DEFAULT_CONF_HASH = {
+      storage_dir: MPS_STORAGE_DIR,
+      log_file: MPS_LOG_FILE
+    }
   end
 end

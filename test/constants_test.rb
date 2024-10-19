@@ -10,10 +10,10 @@ class ConstantsTest < Minitest::Test
   end
   def test_mps_filename_regexp()
     @valid_mps_fns.each do |vmf|
-      assert MPS::Constants::MPS_FILE_NAME_REGEXP=~vmf
+      assert Constants::MPS_FILE_NAME_REGEXP=~vmf
     end
     @invalid_mps_fns.each do |ivmf|
-      refute MPS::Constants::MPS_FILE_NAME_REGEXP=~ivmf
+      refute Constants::MPS_FILE_NAME_REGEXP=~ivmf
     end
   end
 
@@ -24,17 +24,17 @@ class ConstantsTest < Minitest::Test
         :month => vmf[4..5],
         :day => vmf[6..7]
       }
-      assert_equal MPS::Constants::MPS_FILE_NAME_DATE_CLIPPER.call(vmf), t, "Date clipper not matched for: #{vmf.to_s}"
+      assert_equal Constants::MPS_FILE_NAME_DATE_CLIPPER.call(vmf), t, "Date clipper not matched for: #{vmf.to_s}"
     end
   end
 
   def test_mps_dir_structure_existance()
     FakeFS.with_fresh do
-      FileUtils.mkdir_p(MPS::Constants::MPS_STORAGE_DIR)
-      FileUtils.touch(MPS::Constants::MPS_CONFIG_FILE)
-      assert Dir.exist?(MPS::Constants::MPS_DIR)
-      assert File.exist?(MPS::Constants::MPS_CONFIG_FILE)
-      assert Dir.exist?(MPS::Constants::MPS_STORAGE_DIR)
+      FileUtils.mkdir_p(Constants::MPS_STORAGE_DIR)
+      FileUtils.touch(Constants::MPS_CONFIG_FILE)
+      assert Dir.exist?(Constants::MPS_DIR)
+      assert File.exist?(Constants::MPS_CONFIG_FILE)
+      assert Dir.exist?(Constants::MPS_STORAGE_DIR)
     end
   end
 end

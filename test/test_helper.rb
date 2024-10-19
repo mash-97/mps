@@ -5,3 +5,5 @@ require "mps"
 
 require "minitest/autorun"
 require 'fakefs/safe'
+
+include MPS

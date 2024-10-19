@@ -16,3 +16,7 @@ gem "webrick", "~> 1.8", :group => :test
 gem "rackup", "~> 2.1", :group => :test
 
 gem "chronic", "~> 0.10.2"
+
+gem "tty-editor", "~> 0.7.0"
+
+gem "thor", "~> 1.3"

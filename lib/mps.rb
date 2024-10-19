@@ -2,6 +2,7 @@
 
 require_relative "mps/version"
 require_relative "mps/mps"
+require_relative "cli/mps"
 
 module MPS
   class Error < StandardError; end

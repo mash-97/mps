@@ -12,4 +12,14 @@ require "mps"
 # Pry.start
 
 require "irb"
+
+include MPS
+include Constants
+def fakefs()
+  require 'fakefs'
+  FakeFS.activate!
+  FileUtils.mkdir_p(Constants::MPS_DIR)
+end
+
 IRB.start(__FILE__)
+

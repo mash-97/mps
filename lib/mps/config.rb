@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 require 'yaml'
+require 'logger'
 require_relative 'constants'
-require_relative 'logger'
+
 module MPS
   # Configuration class
   #
@@ -18,7 +19,12 @@ module MPS
     def initialize(**conf_hash)
       @storage_dir = conf_hash[:storage_dir]
       @log_file = conf_hash[:log_file]
-      @logger = Logger.new(@log_file)
+      @logger = Logger.new(File.open(@log_file, "a+"))
+      @logger.formatter = proc do |sev, time, pn, msg|
+        time = time.strftime("[%Y-%m-%d %H:%M:%S]")
+        sev = {"INFO"=> "I", "WARN"=>"W", "ERROR"=>"E", "FATAL"=> "F", "DEBUG"=>"D"}[sev]
+        "#{time} #{sev}: #{msg}"
+      end
     end
 
     # Loads a yaml configuration file

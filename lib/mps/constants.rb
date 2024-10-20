@@ -46,5 +46,19 @@ module MPS
       storage_dir: MPS_STORAGE_DIR,
       log_file: MPS_LOG_FILE
     }
+
+
+    # at or @[]{} signature regexps
+    # at regexp with ignore group to have the 
+    # strscan pointer at the begining of the at signature
+    AT_REGEXP_GI = /(?=@[a-zA-Z0-9]+?\[[\s\S]*?\]\s*?\{)/
+    # at regexp without ingnoring groups
+    AT_REGEXP = /@([a-zA-Z0-9_,:\s]+?)\[(.*?)\]\s*?{/
+
+    # end curly bracket regexp
+    # ignore group
+    END_CURLY_REGEXP_GI = /(?=(?<!')\}(?!'))/
+    END_CURLY_REGEXP = /(?<!')\}(?!')/
+
   end
 end

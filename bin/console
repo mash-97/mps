@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
-
+ENV["MPS_DEBUG"] = "true"
 require "bundler/setup"
 require "mps"
 
@@ -13,14 +13,23 @@ require "mps"
 
 require "irb"
 require 'pp'
-require 'fakefs'
 
 include MPS
 include Constants
 
+# write a dummy mps file
+@txt_fp = Pathname.new("E:/mps/test/tests/sig-tests/20240221.mps")
+txt = File.read(@txt_fp.to_path)
+
+require 'fakefs'
 FakeFS.activate!
 
 FileUtils.mkdir_p(Constants::MPS_DIR)
+FileUtils.mkdir_p(@txt_fp.dirname.to_path)
+File.open(@txt_fp.to_path, "w+") do |f|
+  f.write(txt)
+end
+
 @conf = Config.init()
 @me = Engines::MPS.new(@conf)
 

@@ -1,7 +1,4 @@
 # frozen_string_literal: true
-require 'yaml'
-require 'logger'
-require_relative 'constants'
 
 module MPS
   # Configuration class

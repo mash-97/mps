@@ -2,9 +2,9 @@
 
 module MPS
   module Elements
-    class MPS
-      SIGNATURE_STAMP = "mps"
-      SIGNATURE_REGEX = /mps/
+    class Note
+      SIGNATURE_STAMP = "note"
+      SIGNATURE_REGEX = /note/
       include Element
     end
   end

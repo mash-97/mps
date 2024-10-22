@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-require 'chronic'
 module MPS
   module Interpolators
     class Time

@@ -16,8 +16,11 @@ module MPS
 
       def mps_open(datesign)
         filename = ::MPS.get_filename_from_date(::MPS.get_date(datesign))
+        file_path = File.join(@config.storage_dir, filename)
+        @logger.info("Open MPS in text editor\n")
         # extend filename for MPS_DIR here.
-        ::MPS.open_editor(filename)
+        written_byte_size = ::MPS.open_editor(file_path)
+        @logger.info("Done written Size: #{written_byte_size} bytes\n")
       end
 
       def self.matched_element_class(str, element_classes)

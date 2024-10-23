@@ -37,7 +37,12 @@ module MPS
     end
   end
   def self.open_editor(text_file)
+    init_size = 0
+    init_size = File.size(text_file) if File.exist?(text_file)
     TTY::Editor.open(text_file, command: "vim")
+    curr_size = 0
+    curr_size = File.size(text_file) if File.exist?(text_file)
+    return curr_size-init_size
   end
 end
 

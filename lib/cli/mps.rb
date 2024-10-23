@@ -15,6 +15,12 @@ module MPS
       def self.exit_on_failure?
         true
       end
+
+      desc "version", "print version"
+      def version
+        say "mps (v#{::MPS::VERSION})"
+      end
+      
       desc "open DATESIGN", "Open mps file in editor, usually in Vim"
       def open(datesign="today")
         init()

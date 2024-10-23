@@ -5,6 +5,7 @@ require "logger"
 require "chronic"
 require "tty-editor"
 require "strscan"
+require_relative "mps/version"
 require_relative "mps/mps"
 
 ir "mps/constants"

@@ -27,6 +27,21 @@ module MPS
         end
       end
 
+      desc "git GITCOMMAND", "Run git commands inside the :storage_dir directory"
+      def git(*commands)
+        init()
+        begin
+          commands = commands.each.collect{|c| c.include?(' ') ? "\"#{c}\"" : c }
+          git_command = "git #{commands.join(' ')}"
+          inside @config.storage_dir do 
+            run git_command
+          end
+          
+        rescue Exception => err_msg
+          raise Thor::Error, err_msg
+        end
+      end
+
       private
       def init()
         begin

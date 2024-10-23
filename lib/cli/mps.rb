@@ -47,6 +47,20 @@ module MPS
           raise Thor::Error, err_msg
         end
       end
+      desc "cmd COMMAND", "Run shell commands inside the :storage_dir directory"
+      def cmd(*commands)
+        init()
+        begin
+          commands = commands.each.collect{|c| c.include?(' ') ? "\"#{c}\"" : c }
+          shell_command = "#{commands.join(' ')}"
+          inside @config.storage_dir do 
+            run shell_command
+          end
+          
+        rescue Exception => err_msg
+          raise Thor::Error, err_msg
+        end
+      end
 
       private
       def init()

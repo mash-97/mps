@@ -9,22 +9,6 @@ def ir(rltv_rb_fp)
   puts("#{f} at #{l} for #{rltv_rb_fp}  #=> #{r}") if ENV["MPS_DEBUG"]=="true"
 end
 module MPS
-  def self.constantsTree(constant=nil)
-    return nil if !constant
-    return nil if !(constant.class==Module or constant.class==Class)
-    puts("#> 1, #{constant}")
-    hash = {}
-    constant.constants.each do |const|
-      x = eval("#{constant}::#{const}")
-      if [Module, Class].include?(x.class) and x.constants == constant.constants
-        hash[const] = nil 
-        next
-      end
-      hash[const] = self.constantsTree(x)
-    end
-    return hash 
-  end
-
   def self.get_date(str)
     return Chronic.parse(str).to_date
   end

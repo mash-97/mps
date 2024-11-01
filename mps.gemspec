@@ -35,6 +35,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "tty-editor", "~> 0.7.0"
   spec.add_runtime_dependency "chronic", "~> 0.10.2"
 
+  spec.add_development_dependency "rake", "~> 13.2"
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "fakefs", "~> 2.5"
   spec.add_development_dependency "tmpdir", "~> 0.2.0"

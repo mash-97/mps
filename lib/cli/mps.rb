@@ -30,7 +30,7 @@ module MPS
           date = ::MPS.get_date(datesign)
           file_name = nil
           inside(@config.storage_dir) do
-            entries = Dir["**/#{date.strftime('%Y%m%d')}*\.#{::MPS::Constants::MPS_EXT}"]
+            entries = Dir["**/#{date.strftime('%Y%m%d')}*\.#{::MPS::Constants::MPS_EXT}"].grep(::MPS::Constants::MPS_FILE_NAME_REGEXP)
             if entries.length == 0
               file_name = ::MPS::Constants::MPS_NEW_FILE_NAME_GEN.call(date)
             elsif entries.length == 1

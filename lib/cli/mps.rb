@@ -2,16 +2,17 @@
 
 require 'thor'
 require 'yaml'
+require 'cli/ui'
 
 module MPS
-  module CLI 
+  module CLI
     class MPS < Thor
       include Thor::Actions
       class_option :verbose, type: :boolean, default: false
       class_option :config_path, type: :string, default: ::MPS::Constants::MPS_CONFIG_FILE, desc: "mps config file path"
       class_option :force, type: :boolean, default: false
       default_task :open
-      
+
       def self.exit_on_failure?
         true
       end
@@ -20,14 +21,33 @@ module MPS
       def version
         say "mps (v#{::MPS::VERSION})"
       end
-      
+
       desc "open DATESIGN", "Open mps file in editor, usually in Vim"
       def open(datesign="today")
         init()
         begin
           mps_engine = ::MPS::Engines::MPS.new(@config)
-          written_bytes = mps_engine.mps_open(datesign)
-          say_status :written, "#{written_bytes} bytes", :green 
+          date = ::MPS.get_date(datesign)
+          file_name = nil
+          inside(@config.storage_dir) do
+            entries = Dir["**/#{date.strftime('%Y%m%d')}*\.#{::MPS::Constants::MPS_EXT}"]
+            if entries.length == 0
+              file_name = ::MPS::Constants::MPS_NEW_FILE_NAME_GEN.call(date)
+            elsif entries.length == 1
+              file_name = entries.first
+            else
+              file_name = ::CLI::UI::Prompt.ask("#{entries.size} files found: ") do |handler|
+                entries.each do |entry|
+                  handler.option(entry){|s|s}
+                end
+              end
+            end
+            @config.logger.info("Open MPS in text editor\n")
+            written_bytes = ::MPS.open_editor(file_name)
+            @config.logger.info("Done written Size: #{written_bytes} bytes\n")
+            say_status :written, "#{written_bytes} bytes", :green
+          end
+
         rescue Exception => err_msg
           raise Thor::Error, err_msg
         end
@@ -39,10 +59,10 @@ module MPS
         begin
           commands = commands.each.collect{|c| c.include?(' ') ? "\"#{c}\"" : c }
           git_command = "git #{commands.join(' ')}"
-          inside @config.storage_dir do 
+          inside @config.storage_dir do
             run git_command
           end
-          
+
         rescue Exception => err_msg
           raise Thor::Error, err_msg
         end
@@ -53,10 +73,10 @@ module MPS
         begin
           commands = commands.each.collect{|c| c.include?(' ') ? "\"#{c}\"" : c }
           shell_command = "#{commands.join(' ')}"
-          inside @config.storage_dir do 
+          inside @config.storage_dir do
             run shell_command
           end
-          
+
         rescue Exception => err_msg
           raise Thor::Error, err_msg
         end

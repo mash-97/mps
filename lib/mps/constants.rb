@@ -20,7 +20,7 @@ module MPS
     MPS_STORAGE_DIR = File.join(MPS_DIR, "mps")
 
     # mps file name structure
-    MPS_FILE_NAME_REGEXP = Regexp.new("^((\\d{4})(\\d{2})(\\d{2}))\\.#{MPS_EXT}$")
+    MPS_FILE_NAME_REGEXP = Regexp.new("^(?<date-stamp>(?<year>\\d{4})(?<month>\\d{2})(?<day>\\d{2})(?<dot-epoch>\\.(?<epoch>\\d{10,}))?)\\.#{MPS_EXT}$")
 
     # clip the mps filename except the extention, usually datestamp
     MPS_FILE_NAME_CLIPPER = ->(file_basename){

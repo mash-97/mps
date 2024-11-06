@@ -14,8 +14,8 @@ module MPS
     # mps config default file path
     MPS_CONFIG_FILE = File.join(HOME_DIR, ".mps_config.yaml")
 
-    # default mps storage directory, usually where the mps files 
-    # will be stored. but should configurable to any path through 
+    # default mps storage directory, usually where the mps files
+    # will be stored. but should configurable to any path through
     # config.
     MPS_STORAGE_DIR = File.join(MPS_DIR, "mps")
 
@@ -38,6 +38,11 @@ module MPS
       }
     }
 
+    # get new file name
+    MPS_NEW_FILE_NAME_GEN = ->(date){
+      "#{date.strftime('%Y%m%d')}.#{Time.now.to_i}.#{MPS_EXT}"
+    }
+
     # default mps log path
     MPS_LOG_FILE = File.join(MPS_DIR, "mps.log")
 
@@ -50,7 +55,7 @@ module MPS
 
 
     # at or @[]{} signature regexps
-    # at regexp with ignore group to have the 
+    # at regexp with ignore group to have the
     # strscan pointer at the begining of the at signature
     AT_REGEXP_LA = /(?=@[a-zA-Z0-9]+?\[[\s\S]*?\]\s*?\{)/
     # at regexp without ingnoring groups

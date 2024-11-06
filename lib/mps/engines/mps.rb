@@ -11,16 +11,7 @@ module MPS
         @config = config
         @element_classes = ::MPS::Elements.constants.map{|k|eval("::MPS::Elements::#{k}")}.select{|x|x.class==Class}
         @interpolator_classes = ::MPS::Interpolators.constants.map{|k|eval("::MPS::Interpolators::#{k}")}.select{|x|x.class==Class}
-        @logger = @config.logger 
-      end
-
-      def mps_open(datesign)
-        filename = ::MPS.get_filename_from_date(::MPS.get_date(datesign))
-        file_path = File.join(@config.storage_dir, filename)
-        @logger.info("Open MPS in text editor\n")
-        written_byte_size = ::MPS.open_editor(file_path)
-        @logger.info("Done written Size: #{written_byte_size} bytes\n")
-        return written_byte_size
+        @logger = @config.logger
       end
 
       def self.matched_element_class(str, element_classes)
@@ -33,10 +24,10 @@ module MPS
       def self.look_ahead_pos(str_scanner, regex_la)
         pos = str_scanner.string.size
         if str_scanner.scan_until(regex_la)
-          pos = str_scanner.pos 
+          pos = str_scanner.pos
           str_scanner.unscan
         end
-        return pos 
+        return pos
       end
 
       def self.parse_mps_file_to_elments_hash(mps_file_path, element_classes)
@@ -49,19 +40,19 @@ module MPS
         elements_hash = {}
         stack = []
         at_first = true
-        element = nil 
+        element = nil
 
         while !str_scanr.eos?
           if at_first && str_scanr.scan_until(::MPS::Constants::AT_REGEXP_LA)
-            s_pos = str_scanr.pos 
+            s_pos = str_scanr.pos
             str_scanr.scan_until(::MPS::Constants::AT_REGEXP)
             matched_data = str_scanr.string[s_pos..str_scanr.pos-1].match(::MPS::Constants::AT_REGEXP)
             # puts("matched: #{matched_data.inspect}")
             element_class = self.matched_element_class(matched_data["element_sign"], element_classes)
-            
+
             element_class = matched_data["element_sign"] if element_class==nil
             stack << {
-              element_class: element_class, 
+              element_class: element_class,
               element_args: matched_data["args"],
               body_start_pos: str_scanr.pos,
               start_pos: s_pos
@@ -75,7 +66,7 @@ module MPS
             if stack_top[:element_class].class!=Class
               element = Struct.new(:ecn, :args, :refs, :body_str).new(
                 stack_top[:element_class],
-                stack_top[:element_args], 
+                stack_top[:element_args],
                 trefs,
                 body_str
               )
@@ -88,11 +79,11 @@ module MPS
           end
 
           at_pos = self.look_ahead_pos(str_scanr, ::MPS::Constants::AT_REGEXP_LA)
-          ec_pos =  self.look_ahead_pos(str_scanr, ::MPS::Constants::END_CURLY_REGEXP_LA) 
+          ec_pos =  self.look_ahead_pos(str_scanr, ::MPS::Constants::END_CURLY_REGEXP_LA)
 
-          min_pos = [at_pos, ec_pos].min 
+          min_pos = [at_pos, ec_pos].min
 
-          if min_pos==at_pos and at_first 
+          if min_pos==at_pos and at_first
             refs << 1
           elsif min_pos==ec_pos and !at_first
             refs.pop()

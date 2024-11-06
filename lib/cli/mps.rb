@@ -26,7 +26,6 @@ module MPS
       def open(datesign="today")
         init()
         begin
-          mps_engine = ::MPS::Engines::MPS.new(@config)
           date = ::MPS.get_date(datesign)
           file_name = nil
           inside(@config.storage_dir) do
@@ -59,7 +58,7 @@ module MPS
         begin
           git_command = "git status"
           if commands.first=="auto"
-            git_command = "git add . && git commit -m \"$(date)\" && git push origin master"
+            git_command = "git add . && git commit -m \"$(date)\" && git pull orign master && git push origin master"
           elsif commands.first=="autocommit"
             git_command = "git add . && git commit -m \"$(date)\""
           elsif commands.size>0
@@ -74,6 +73,20 @@ module MPS
           raise Thor::Error, err_msg
         end
       end
+
+      desc "autogit", "Auto stage, commit, pull and push"
+      def autogit()
+        init()
+        begin
+          git_command = "git add . && git commit -m \"$(date)\" && git pull orign master && git push origin master"
+          inside @config.storage_dir do 
+            run git_command
+          end
+        rescue Exception => err_msg
+          raise Thor::Error, err_msg
+        end
+      end
+      
       desc "cmd COMMAND", "Run shell commands inside the :storage_dir directory"
       def cmd(*commands)
         init()

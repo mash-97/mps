@@ -57,8 +57,15 @@ module MPS
       def git(*commands)
         init()
         begin
-          commands = commands.each.collect{|c| c.include?(' ') ? "\"#{c}\"" : c }
-          git_command = "git #{commands.join(' ')}"
+          git_command = "git status"
+          if commands.first=="auto"
+            git_command = "git add . && git commit -m \"$(date)\" && git push origin master"
+          elsif commands.first=="autocommit"
+            git_command = "git add . && git commit -m \"$(date)\""
+          elsif commands.size>0
+            commands = commands.each.collect{|c| c.include?(' ') ? "\"#{c}\"" : c }
+            git_command = "git #{commands.join(' ')}"
+          end
           inside @config.storage_dir do
             run git_command
           end

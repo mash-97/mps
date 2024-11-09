@@ -20,12 +20,12 @@ module MPS
     MPS_STORAGE_DIR = File.join(MPS_DIR, "mps")
 
     # mps file name structure
-    MPS_FILE_NAME_REGEXP = Regexp.new("^(?<date-stamp>(?<year>\\d{4})(?<month>\\d{2})(?<day>\\d{2})(?<dot-epoch>\\.(?<epoch>\\d{10,}))?)\\.#{MPS_EXT}$")
+    MPS_FILE_NAME_REGEXP = Regexp.new("^(?<mps-file-base-name>(?<date-stamp>(?<year>\\d{4})(?<month>\\d{2})(?<day>\\d{2})(?<dot-epoch>\\.(?<epoch>\\d{10,}))?))\\.#{MPS_EXT}$")
 
     # clip the mps filename except the extention, usually datestamp
     MPS_FILE_NAME_CLIPPER = ->(file_basename){
       MPS_FILE_NAME_REGEXP=~file_basename
-      $~[1]
+      $~["epoch"] ? [$~["date-stamp"], $~["epoch"]] : [$~["date-stamp"]]
     }
 
     # clip datestamp with hash accessibility from the mps filename
@@ -57,9 +57,9 @@ module MPS
     # at or @[]{} signature regexps
     # at regexp with ignore group to have the
     # strscan pointer at the begining of the at signature
-    AT_REGEXP_LA = /(?=@[a-zA-Z0-9]+?\[[\s\S]*?\]\s*?\{)/
+    AT_REGEXP_LA = /(?=@[a-zA-Z0-9]+?(\[[\s\S]*?\])?\s*?\{)/
     # at regexp without ingnoring groups
-    AT_REGEXP = /@(?<element_sign>[a-zA-Z0-9_,:\s]+?)\[(?<args>.*?)\]\s*?\{/
+    AT_REGEXP = /@(?<element_sign>[a-zA-Z0-9_,:\s]+?)(\[(?<args>.*?)\])?\s*?\{/
 
     # end curly bracket regexp
     # ignore group

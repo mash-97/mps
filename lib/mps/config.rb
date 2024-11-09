@@ -33,7 +33,7 @@ module MPS
     # @note This is method checks for the loaded yaml data, if it doesn't contain necessary data conforming to the contextual configuration data, should raise appropriate StandardError.
     # @return [Hash] should return a Config hash
     
-    def self.load_conf_hash(conf_fp)
+    def self.load_conf_hash(conf_fp=::MPS::Constants::MPS_CONFIG_FILE)
       if File.exist?(conf_fp)
         conf_hash = YAML.load_file(conf_fp)
         raise LoadError.new("yaml not a hash") if conf_hash.class!=Hash
@@ -51,7 +51,7 @@ module MPS
     # @param conf_fp [String] file path to the yaml config file
     # @param force [Boolean] forces even file exists
     # @return [Conf] Conf object
-    def self.init(conf_fp)
+    def self.init(conf_fp=::MPS::Constants::MPS_CONFIG_FILE)
       File.open(conf_fp, "w+") do |f|
         YAML.dump(Constants::DEFAULT_CONF_HASH, f)
       end

@@ -14,6 +14,10 @@ module MPS
         @logger = @config.logger
       end
 
+      def parse_mps(mps_file_path)
+        self.class.parse_mps_file_to_elments_hash(mps_file_path, self.element_classes)
+      end
+
       def self.matched_element_class(str, element_classes)
         element_classes.each do |ec|
           return ec if str=~ec::SIGNATURE_REGEX
@@ -35,8 +39,8 @@ module MPS
         # add elements::mps signature
         mps_str = "@#{::MPS::Elements::MPS::SIGNATURE_STAMP}[]{"+mps_str+"}"
         str_scanr = StringScanner.new(mps_str)
-        base_ref = ::MPS::Constants::MPS_FILE_NAME_CLIPPER.call(File.basename(mps_file_path))
-        refs = [base_ref.to_i]
+        base_refs = ::MPS::Constants::MPS_FILE_NAME_CLIPPER.call(File.basename(mps_file_path)).map(&:to_i)
+        refs = [*base_refs]
         elements_hash = {}
         stack = []
         at_first = true

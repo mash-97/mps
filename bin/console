@@ -18,21 +18,23 @@ include MPS
 include Constants
 
 # write a dummy mps file
-@txt_fp = Pathname.new("E:/mps/test/tests/sig-tests/20240221.mps")
-txt = File.read(@txt_fp.to_path)
+# C:\Users\mash\.mps\mps\20241107.1730923538.mps
+@txt_fp = Pathname.new("C:/Users/mash/.mps/mps/20241107.1730923538.mps")
+# txt = File.read(@txt_fp.to_path)
 
-require 'fakefs'
-FakeFS.activate!
+# require 'fakefs'
+# FakeFS.activate!
 
-FileUtils.mkdir_p(Constants::MPS_DIR)
-FileUtils.mkdir_p(@txt_fp.dirname.to_path)
-File.open(@txt_fp.to_path, "w+") do |f|
-  f.write(txt)
-end
+# FileUtils.mkdir_p(Constants::MPS_DIR)
+# FileUtils.mkdir_p(@txt_fp.dirname.to_path)
+# File.open(@txt_fp.to_path, "w+") do |f|
+#   f.write(txt)
+# end
 
-@conf = Config.init()
+Config.init()
+@conf = Config.new(**Config.load_conf_hash())
 @me = Engines::MPS.new(@conf)
 
 IRB.start(__FILE__)
 
-FakeFS.deactivate!
+# FakeFS.deactivate!

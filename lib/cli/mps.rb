@@ -78,7 +78,7 @@ module MPS
       def autogit()
         init()
         begin
-          git_command = "git add . && git commit -m \"$(date)\" && git pull orign master && git push origin master"
+          git_command = "git add . && git commit -m \"$(date)\" && git pull origin master && git push origin master"
           inside @config.storage_dir do 
             run git_command
           end

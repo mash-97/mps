@@ -15,7 +15,7 @@ module MPS
       end
 
       def parse_mps(mps_file_path)
-        self.class.parse_mps_file_to_elments_hash(mps_file_path, self.element_classes)
+        self.class.parse_mps_file_to_elements_hash(mps_file_path, self.element_classes)
       end
 
       def self.matched_element_class(str, element_classes)
@@ -34,19 +34,28 @@ module MPS
         return pos
       end
 
-      def self.parse_mps_file_to_elments_hash(mps_file_path, element_classes)
-        mps_str = File.read(mps_file_path)
+      def self.parse_mps_file_to_elements_hash(mps_file_path, element_classes)
+        main_str = File.read(mps_file_path)
         # add elements::mps signature
-        mps_str = "@#{::MPS::Elements::MPS::SIGNATURE_STAMP}[]{"+mps_str+"}"
-        str_scanr = StringScanner.new(mps_str)
-        base_refs = ::MPS::Constants::MPS_FILE_NAME_CLIPPER.call(File.basename(mps_file_path)).map(&:to_i)
+        main_str = "@#{::MPS::Elements::MPS::SIGNATURE_STAMP}[]{"+main_str+"}"
+        str_scanr = StringScanner.new(main_str)
+        base_refs = ::MPS::Constants::MPS_FILE_NAME_TO_REF_PARSER.call(File.basename(mps_file_path)).map(&:to_i)
+        base_refs_size = base_refs.length
         refs = [*base_refs]
         elements_hash = {}
         stack = []
         at_first = true
         element = nil
 
+        offset_size = 0
+        disp_str = main_str.clone()
+
         while !str_scanr.eos?
+          # at_signature is found first
+          #   -> determine the starting position of @
+          #   -> determine the main body starting position eg. position just the {
+          #   -> parse element sign and args
+          #   -> push it to the stack
           if at_first && str_scanr.scan_until(::MPS::Constants::AT_REGEXP_LA)
             s_pos = str_scanr.pos
             str_scanr.scan_until(::MPS::Constants::AT_REGEXP)
@@ -59,12 +68,21 @@ module MPS
               element_class: element_class,
               element_args: matched_data["args"],
               body_start_pos: str_scanr.pos,
-              start_pos: s_pos
+              elm_start_pos: s_pos
             }
+          
+          # ending curly } is found first and stack not empty
+          #   -> pop out stack
+          #   -> determine ending position
+          #   -> determine main body string
+          #   -> create element obj
+          #   -> determine offset and display string
+          #   -> set display string buffer.
           elsif !at_first && str_scanr.scan_until(::MPS::Constants::END_CURLY_REGEXP) && !stack.empty?
             stack_top = stack.pop()
             stack_top[:end_pos] = str_scanr.pos-1
             body_str = str_scanr.string[stack_top[:body_start_pos]...stack_top[:end_pos]]
+            
             # call corresponding element class to create element instance
             trefs = refs.clone()
             if stack_top[:element_class].class!=Class
@@ -75,10 +93,39 @@ module MPS
                 body_str
               )
               element.class.instance_eval("attr_accessor :disp_str")
+              element.disp_str = element.body_str
             else
               element = stack_top[:element_class].new(args: stack_top[:element_args], refs: trefs, body_str: body_str)
             end
-            elements_hash[refs.join(".")] = element
+
+            print("\n\nElement Display String\n")
+            puts("refs: #{refs.inspect}")
+            puts("stack_top[:body_start_pos]: #{stack_top[:body_start_pos]}")
+            puts("stack_top[:end_pos]: #{stack_top[:end_pos]}")
+            puts("stack_top[:elm_start_pos]: #{stack_top[:elm_start_pos]}")
+            puts("offset_size: #{offset_size}")
+            puts("disp_str: #{disp_str}")
+  
+            elm_disp_str = ::MPS::Elements::Element.display_str(
+              disp_str[(stack_top[:body_start_pos]+offset_size)...(stack_top[:end_pos]+offset_size)], 
+              refs.size-base_refs_size
+            )
+            
+            puts("disp_str[element_start_pos]: #{disp_str[(stack_top[:elm_start_pos]+offset_size)]}")
+            puts("dis_str[body_start_pos]: #{disp_str[(stack_top[:body_start_pos]+offset_size)]}")
+            puts("disp_str[element_end_pos]: #{disp_str[(stack_top[:end_pos]+offset_size)]}")
+            gets
+            disp_str[(stack_top[:elm_start_pos]+offset_size)..(stack_top[:end_pos]+offset_size)] = elm_disp_str
+            element.disp_str = elm_disp_str
+            offset_size += (elm_disp_str.size - (stack_top[:end_pos]-stack_top[:elm_start_pos]+1))
+
+            # offset debug
+            element.class.instance_eval("attr_accessor :offset")
+            element.offset = offset_size
+
+
+            ref = refs.join(".")
+            elements_hash[ref] = element
             refs[-1] += 1
           end
 
@@ -95,6 +142,7 @@ module MPS
           at_first = (min_pos==at_pos)
           str_scanr.pos = min_pos
         end
+        
         return elements_hash
       end
     end

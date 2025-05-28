@@ -25,6 +25,13 @@ module MPS
     # clip the mps filename except the extention, usually datestamp
     MPS_FILE_NAME_CLIPPER = ->(file_basename){
       MPS_FILE_NAME_REGEXP=~file_basename
+      $~["mps-file-base-name"]
+    }
+
+    # lambda for parsing date and epoch (if provided) from the file basename
+    # returns an array of date and epoch
+    MPS_FILE_NAME_TO_REF_PARSER= ->(file_basename){
+      MPS_FILE_NAME_REGEXP=~file_basename
       $~["epoch"] ? [$~["date-stamp"], $~["epoch"]] : [$~["date-stamp"]]
     }
 
@@ -32,9 +39,9 @@ module MPS
     MPS_FILE_NAME_DATE_CLIPPER = ->(file_basename){
       MPS_FILE_NAME_REGEXP=~file_basename
       {
-        year: $~[2],
-        month: $~[3],
-        day: $~[4]
+        year: $~["year"],
+        month: $~["month"],
+        day: $~["day"]
       }
     }
 
@@ -58,6 +65,7 @@ module MPS
     # at regexp with ignore group to have the
     # strscan pointer at the begining of the at signature
     AT_REGEXP_LA = /(?=@[a-zA-Z0-9]+?(\[[\s\S]*?\])?\s*?\{)/
+    
     # at regexp without ingnoring groups
     AT_REGEXP = /@(?<element_sign>[a-zA-Z0-9_,:\s]+?)(\[(?<args>.*?)\])?\s*?\{/
 
@@ -66,5 +74,8 @@ module MPS
     END_CURLY_REGEXP_LA = /(?=(?<!')\}(?!'))/
     END_CURLY_REGEXP = /(?<!')\}(?!')/
 
+
+    # tag regexp
+    TAG_REGEXP = /(?<tag>#(?<tag_name>[a-zA-Z0-9]+?))/
   end
 end

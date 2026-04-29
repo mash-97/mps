@@ -4,52 +4,60 @@ require_relative 'test_helper'
 
 class ConfigTest < Minitest::Test
   include Constants
-  def setup()
-    Config
-  end
-  def test_default_config()
-    FakeFS.with_fresh do 
-      FileUtils.mkdir_p(MPS_DIR)
-      # refute_path_exists MPS_CONFIG_FILE
-      # assert_raises(MPS::Config::ConfigFileNotFound, "#> should raise configs file not found") do 
-      #   Config.load()
-      # end
 
-      # # first init and then check loaded config
-      # refute_path_exists MPS_LOG_FILE
-      # conf = Config.init()
-      # assert_equal conf.storage_dir, DEFAULT_CONF_HASH[:storage_dir], "#> storage dir check"
-      # assert_equal conf.log_file, DEFAULT_CONF_HASH[:log_file], "#> log file check"
-      # loaded_conf = Config.load()
-      # assert_equal conf.storage_dir, loaded_conf.storage_dir, "#> storage dir check"
-      # assert_equal conf.log_file, loaded_conf.log_file, "#> log file check"
+  def test_default_config
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(MPS_DIR)
+      refute File.exist?(MPS_CONFIG_FILE)
+      assert_raises(Config::ConfigFileNotFound) do
+        Config.load_conf_hash(MPS_CONFIG_FILE)
+      end
+      Config.init(MPS_CONFIG_FILE)
+      assert File.exist?(MPS_CONFIG_FILE)
+      conf_hash = Config.load_conf_hash(MPS_CONFIG_FILE)
+      assert_equal DEFAULT_CONF_HASH[:storage_dir], conf_hash[:storage_dir]
+      assert_equal DEFAULT_CONF_HASH[:log_file],    conf_hash[:log_file]
+      assert_equal DEFAULT_CONF_HASH[:mps_dir],     conf_hash[:mps_dir]
     end
   end
 
   def test_config_load
-    FakeFS.with_fresh do 
+    FakeFS.with_fresh do
       FileUtils.mkdir_p(MPS_DIR)
+      FileUtils.mkdir_p(MPS_STORAGE_DIR)
+      Config.init(MPS_CONFIG_FILE)
+      FileUtils.touch(DEFAULT_CONF_HASH[:log_file])
+      conf_hash = Config.load_conf_hash(MPS_CONFIG_FILE)
+      config    = Config.new(**conf_hash)
+      assert_equal DEFAULT_CONF_HASH[:storage_dir], config.storage_dir
+      assert_equal DEFAULT_CONF_HASH[:log_file],    config.log_file
+      assert_equal "origin",  config.git_remote
+      assert_equal "master",  config.git_branch
     end
   end
 
-  def test_log 
-    FakeFS.with_fresh do 
-      FileUtils.mkdir_p MPS_DIR
-      # refute_path_exists MPS_LOG_FILE
-      # refute_path_exists MPS_CONFIG_FILE
-      # assert_raises Config::ConfigFileNotFound, "#> conf file not found" do 
-      #   Config.load()
-      # end
-      # conf = Config.init()
-      # assert_equal conf.storage_dir, DEFAULT_CONF_HASH[:storage_dir]
-      # assert_equal conf.log_file, DEFAULT_CONF_HASH[:log_file]
-      # assert_path_exists MPS_LOG_FILE
-      # assert_path_exists MPS_CONFIG_FILE 
-      
-      # conf.logger.info("info hello world")
-      # assert_match(/I:[\s\S]*hello world/, File.read(MPS_LOG_FILE))
-      # conf.logger.debug("debug")
-      # assert_match(/D:[\s\S]*debug/, File.read(MPS_LOG_FILE))
+  def test_log
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(MPS_DIR)
+      FileUtils.mkdir_p(MPS_STORAGE_DIR)
+      Config.init(MPS_CONFIG_FILE)
+      FileUtils.touch(DEFAULT_CONF_HASH[:log_file])
+      config = Config.new(**Config.load_conf_hash(MPS_CONFIG_FILE))
+      config.logger.info("hello world")
+      config.logger.close
+      log_content = File.read(DEFAULT_CONF_HASH[:log_file])
+      assert_match(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] I: hello world/, log_content)
+    end
+  end
+
+  def test_load_conf_hash_raises_on_missing_key
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(MPS_DIR)
+      partial_yaml = MPS_CONFIG_FILE
+      File.open(partial_yaml, "w") { |f| f.write(YAML.dump({ storage_dir: "/tmp/storage" })) }
+      assert_raises(Config::LoadError) do
+        Config.load_conf_hash(partial_yaml)
+      end
     end
   end
 end

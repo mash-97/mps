@@ -29,25 +29,13 @@ module MPS
           date = ::MPS.get_date(datesign)
           file_name = nil
           inside(@config.storage_dir) do
-            entries = Dir["**/#{date.strftime('%Y%m%d')}*\.#{::MPS::Constants::MPS_EXT}"].grep(::MPS::Constants::MPS_FILE_NAME_REGEXP)
-            if entries.length == 0
-              file_name = ::MPS::Constants::MPS_NEW_FILE_NAME_GEN.call(date)
-            elsif entries.length == 1
-              file_name = entries.first
-            else
-              file_name = ::CLI::UI::Prompt.ask("#{entries.size} files found: ") do |handler|
-                entries.each do |entry|
-                  handler.option(entry){|s|s}
-                end
-              end
-            end
+            file_name = resolve_mps_file(date) || ::MPS::Constants::MPS_NEW_FILE_NAME_GEN.call(date)
             @config.logger.info("Open MPS in text editor\n")
             written_bytes = ::MPS.open_editor(file_name)
             @config.logger.info("Done written Size: #{written_bytes} bytes\n")
             say_status :written, "#{written_bytes} bytes", :green
           end
-
-        rescue Exception => err_msg
+        rescue StandardError => err_msg
           raise Thor::Error, err_msg
         end
       end
@@ -58,7 +46,7 @@ module MPS
         begin
           git_command = "git status"
           if commands.first=="auto"
-            git_command = "git add . && git commit -m \"$(date)\" && git pull orign master && git push origin master"
+            git_command = "git add . && git commit -m \"$(date)\" && git pull #{@config.git_remote} #{@config.git_branch} && git push #{@config.git_remote} #{@config.git_branch}"
           elsif commands.first=="autocommit"
             git_command = "git add . && git commit -m \"$(date)\""
           elsif commands.size>0
@@ -69,7 +57,7 @@ module MPS
             run git_command
           end
 
-        rescue Exception => err_msg
+        rescue StandardError => err_msg
           raise Thor::Error, err_msg
         end
       end
@@ -78,11 +66,11 @@ module MPS
       def autogit()
         init()
         begin
-          git_command = "git add . && git commit -m \"$(date)\" && git pull origin master && git push origin master"
+          git_command = "git add . && git commit -m \"$(date)\" && git pull #{@config.git_remote} #{@config.git_branch} && git push #{@config.git_remote} #{@config.git_branch}"
           inside @config.storage_dir do 
             run git_command
           end
-        rescue Exception => err_msg
+        rescue StandardError => err_msg
           raise Thor::Error, err_msg
         end
       end
@@ -97,7 +85,67 @@ module MPS
             run shell_command
           end
 
-        rescue Exception => err_msg
+        rescue StandardError => err_msg
+          raise Thor::Error, err_msg
+        end
+      end
+
+      desc "list [DATESIGN]", "List parsed elements from a .mps file"
+      method_option :type, type: :string, aliases: "-t", desc: "Filter by element type (task, note, log, reminder)"
+      def list(datesign = "today")
+        init()
+        begin
+          date = ::MPS.get_date(datesign)
+          file_name = nil
+          inside(@config.storage_dir) do
+            file_name = resolve_mps_file(date)
+          end
+          if file_name.nil?
+            say "No file found for #{datesign}", :yellow
+            return
+          end
+
+          element_classes = ::MPS::Elements.constants
+                              .map { |k| ::MPS::Elements.const_get(k) }
+                              .select { |x| x.class == Class }
+
+          full_path = File.join(@config.storage_dir, file_name)
+          elements  = ::MPS::Engines::MPS.parse_mps_file_to_elments_hash(full_path, element_classes)
+
+          type_filter = options[:type]&.downcase
+          shown = 0
+          elements.each do |ref, el|
+            type_name = el.respond_to?(:ecn) ? el.ecn.to_s.downcase : el.class::SIGNATURE_STAMP
+            next if type_name == "mps"
+            next if type_filter && type_name != type_filter
+            say "[#{type_name}] #{el.body_str.strip}", :cyan
+            shown += 1
+          end
+          say "(no elements found)", :yellow if shown == 0
+        rescue StandardError => err_msg
+          raise Thor::Error, err_msg
+        end
+      end
+
+      desc "append TYPE BODY", "Append a single element to today's file without opening Vim"
+      method_option :tags, type: :string, desc: "Comma-separated tags (e.g. work,release)"
+      method_option :at,   type: :string, desc: "Time argument for reminders"
+      def append(type, *body_parts)
+        init()
+        begin
+          body = body_parts.join(" ")
+          args_str = build_args_str(type, options)
+          date = ::MPS.get_date("today")
+          file_name = nil
+          inside(@config.storage_dir) do
+            file_name = resolve_mps_file(date) || ::MPS::Constants::MPS_NEW_FILE_NAME_GEN.call(date)
+          end
+          full_path = File.join(@config.storage_dir, file_name)
+          element_text = "\n@#{type}[#{args_str}]{\n  #{body}\n}\n"
+          File.open(full_path, "a") { |f| f.write(element_text) }
+          say_status :appended, "[#{type}] #{body}", :green
+          @config.logger.info("Appended #{type} element to #{file_name}\n")
+        rescue StandardError => err_msg
           raise Thor::Error, err_msg
         end
       end
@@ -106,7 +154,7 @@ module MPS
       def init()
         begin
           @config = load_config(options[:config_path], force: options[:force])
-        rescue Exception => err_msg
+        rescue StandardError => err_msg
           say_status "error", "failed to initialize"
           raise Thor::Error, err_msg
         end
@@ -135,6 +183,28 @@ module MPS
           create_file conf_hash[:log_file]
         end
         return conf_hash
+      end
+
+      def resolve_mps_file(date)
+        inside(@config.storage_dir) do
+          entries = Dir["**/#{date.strftime('%Y%m%d')}*\.#{::MPS::Constants::MPS_EXT}"].grep(::MPS::Constants::MPS_FILE_NAME_REGEXP)
+          if entries.length == 0
+            return nil
+          elsif entries.length == 1
+            return entries.first
+          else
+            return ::CLI::UI::Prompt.ask("#{entries.size} files found: ") do |handler|
+              entries.each { |entry| handler.option(entry) { |s| s } }
+            end
+          end
+        end
+      end
+
+      def build_args_str(type, opts)
+        parts = []
+        parts << "at: #{opts[:at]}" if opts[:at]
+        parts << opts[:tags] if opts[:tags]
+        parts.join(", ")
       end
     end
   end

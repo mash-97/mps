@@ -5,6 +5,7 @@ module MPS
   module Element 
     PADDING = '  '
     attr_accessor :disp_str
+    attr_reader :body_str
     def initialize(args: [], refs: nil, body_str: nil)
       @args = args
       @refs = refs

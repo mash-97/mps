@@ -50,7 +50,9 @@ module MPS
     DEFAULT_CONF_HASH = {
       mps_dir: MPS_DIR,
       storage_dir: MPS_STORAGE_DIR,
-      log_file: MPS_LOG_FILE
+      log_file: MPS_LOG_FILE,
+      git_remote: "origin",
+      git_branch: "master"
     }
 
 

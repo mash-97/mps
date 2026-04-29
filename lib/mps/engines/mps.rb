@@ -9,8 +9,8 @@ module MPS
       attr_reader :interpolator_classes
       def initialize(config)
         @config = config
-        @element_classes = ::MPS::Elements.constants.map{|k|eval("::MPS::Elements::#{k}")}.select{|x|x.class==Class}
-        @interpolator_classes = ::MPS::Interpolators.constants.map{|k|eval("::MPS::Interpolators::#{k}")}.select{|x|x.class==Class}
+        @element_classes = ::MPS::Elements.constants.map{|k| ::MPS::Elements.const_get(k)}.select{|x|x.class==Class}
+        @interpolator_classes = ::MPS::Interpolators.constants.map{|k| ::MPS::Interpolators.const_get(k)}.select{|x|x.class==Class}
         @logger = @config.logger
       end
 

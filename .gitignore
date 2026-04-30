@@ -9,3 +9,5 @@
 *.lock
 *.mps
 /vendor/
+**/**/*.gem
+

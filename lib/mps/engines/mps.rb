@@ -2,97 +2,107 @@
 
 module MPS
   module Engines
-    class EngineError < StandardError;end;
-    class MPS
+    class EngineError < StandardError; end
+
+    class Parser
+      # Holds an unknown element type (sign not in registered element_classes).
+      Unknown = Struct.new(:ecn, :args, :refs, :body_str)
+
       attr_reader :logger
       attr_reader :element_classes
       attr_reader :interpolator_classes
+
       def initialize(config)
         @config = config
-        @element_classes = ::MPS::Elements.constants.map{|k| ::MPS::Elements.const_get(k)}.select{|x|x.class==Class}
-        @interpolator_classes = ::MPS::Interpolators.constants.map{|k| ::MPS::Interpolators.const_get(k)}.select{|x|x.class==Class}
+        @element_classes = ::MPS::Elements.constants
+          .map    { |k| ::MPS::Elements.const_get(k) }
+          .select { |x| x.class == Class }
+        @interpolator_classes = ::MPS::Interpolators.constants
+          .map    { |k| ::MPS::Interpolators.const_get(k) }
+          .select { |x| x.class == Class }
         @logger = @config.logger
       end
 
+      # Returns the element class whose SIGNATURE_REGEX matches +str+, or nil.
       def self.matched_element_class(str, element_classes)
-        element_classes.each do |ec|
-          return ec if str=~ec::SIGNATURE_REGEX
-        end
-        return nil
+        element_classes.find { |ec| str =~ ec::SIGNATURE_REGEX }
       end
 
+      # Peeks ahead in +str_scanner+ for +regex_la+ without consuming input.
+      # Returns the position of the match, or string size if no match.
       def self.look_ahead_pos(str_scanner, regex_la)
-        pos = str_scanner.string.size
-        if str_scanner.scan_until(regex_la)
-          pos = str_scanner.pos
-          str_scanner.unscan
-        end
-        return pos
+        return str_scanner.string.size unless str_scanner.scan_until(regex_la)
+        pos = str_scanner.pos
+        str_scanner.unscan
+        pos
       end
 
-      def self.parse_mps_file_to_elments_hash(mps_file_path, element_classes)
-        mps_str = File.read(mps_file_path)
-        # add elements::mps signature
-        mps_str = "@#{::MPS::Elements::MPS::SIGNATURE_STAMP}[]{"+mps_str+"}"
-        str_scanr = StringScanner.new(mps_str)
-        base_ref = ::MPS::Constants::MPS_FILE_NAME_CLIPPER.call(File.basename(mps_file_path))
-        refs = [base_ref.to_i]
-        elements_hash = {}
-        stack = []
-        at_first = true
-        element = nil
+      # Parses +mps_file_path+ into a flat hash of ref-path => element instances.
+      def self.parse_mps_file_to_elements_hash(mps_file_path, element_classes)
+        content  = File.read(mps_file_path)
+        wrapped  = "@#{::MPS::Elements::MPS::SIGNATURE_STAMP}[]{\n#{content}\n}"
+        base_ref = ::MPS::Constants::MPS_FILE_NAME_CLIPPER
+                     .call(File.basename(mps_file_path)).to_i
 
-        while !str_scanr.eos?
-          if at_first && str_scanr.scan_until(::MPS::Constants::AT_REGEXP_LA)
-            s_pos = str_scanr.pos
-            str_scanr.scan_until(::MPS::Constants::AT_REGEXP)
-            matched_data = str_scanr.string[s_pos..str_scanr.pos-1].match(::MPS::Constants::AT_REGEXP)
-            # puts("matched: #{matched_data.inspect}")
-            element_class = self.matched_element_class(matched_data["element_sign"], element_classes)
+        open_re  = ::MPS::Constants::AT_REGEXP
+        close_re = ::MPS::Constants::END_CURLY_REGEXP
 
-            element_class = matched_data["element_sign"] if element_class==nil
-            stack << {
-              element_class: element_class,
-              element_args: matched_data["args"],
-              body_start_pos: str_scanr.pos,
-              start_pos: s_pos
-            }
-          elsif !at_first && str_scanr.scan_until(::MPS::Constants::END_CURLY_REGEXP) && !stack.empty?
-            stack_top = stack.pop()
-            stack_top[:end_pos] = str_scanr.pos-1
-            body_str = str_scanr.string[stack_top[:body_start_pos]...stack_top[:end_pos]]
-            # call corresponding element class to create element instance
-            trefs = refs.clone()
-            if stack_top[:element_class].class!=Class
-              element = Struct.new(:ecn, :args, :refs, :body_str).new(
-                stack_top[:element_class],
-                stack_top[:element_args],
-                trefs,
-                body_str
-              )
-              element.class.instance_eval("attr_accessor :disp_str")
+        elements = {}
+        stack    = []
+        pos      = 0
+
+        while pos < wrapped.size
+          open_m  = open_re.match(wrapped, pos)
+          close_m = close_re.match(wrapped, pos)
+
+          break if open_m.nil? && close_m.nil?
+
+          use_open = open_m && (close_m.nil? || open_m.begin(0) < close_m.begin(0))
+
+          if use_open
+            ref_path = if stack.empty?
+              [base_ref]
             else
-              element = stack_top[:element_class].new(args: stack_top[:element_args], refs: trefs, body_str: body_str)
+              parent = stack.last
+              parent[:child_counter] += 1
+              parent[:ref_path] + [parent[:child_counter]]
             end
-            elements_hash[refs.join(".")] = element
-            refs[-1] += 1
+
+            stack.push(
+              sign:          open_m[:element_sign],
+              args:          open_m[:args],
+              body_start:    open_m.end(0),
+              child_counter: 0,
+              ref_path:      ref_path
+            )
+            pos = open_m.end(0)
+          else
+            break if stack.empty?
+
+            frame    = stack.pop
+            body_str = wrapped[frame[:body_start]...close_m.begin(0)]
+            ref_key  = frame[:ref_path].join(".")
+            ec       = matched_element_class(frame[:sign], element_classes)
+
+            elements[ref_key] = if ec
+              ec.new(args: frame[:args], refs: frame[:ref_path], body_str: body_str)
+            else
+              Unknown.new(frame[:sign], frame[:args], frame[:ref_path], body_str)
+            end
+
+            pos = close_m.end(0)
           end
-
-          at_pos = self.look_ahead_pos(str_scanr, ::MPS::Constants::AT_REGEXP_LA)
-          ec_pos =  self.look_ahead_pos(str_scanr, ::MPS::Constants::END_CURLY_REGEXP_LA)
-
-          min_pos = [at_pos, ec_pos].min
-
-          if min_pos==at_pos and at_first
-            refs << 1
-          elsif min_pos==ec_pos and !at_first
-            refs.pop()
-          end
-          at_first = (min_pos==at_pos)
-          str_scanr.pos = min_pos
         end
-        return elements_hash
+
+        elements
+      end
+
+      class << self
+        alias parse_mps_file_to_elments_hash parse_mps_file_to_elements_hash
       end
     end
+
+    # Backward-compatible alias — existing code using Engines::MPS still works.
+    MPS = Parser
   end
 end

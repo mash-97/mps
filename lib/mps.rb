@@ -13,6 +13,7 @@ ir "mps/config"
 ir "mps/interpolators/interpolators"
 ir "mps/elements/elements"
 ir "mps/engines/engines"
+ir "mps/store"
 ir "cli/mps"
 module MPS
   class Error < StandardError; end

@@ -8,3 +8,6 @@
 /tmp/
 *.lock
 *.mps
+/vendor/
+**/**/*.gem
+

@@ -24,8 +24,8 @@ module MPS
 
     # clip the mps filename except the extention, usually datestamp
     MPS_FILE_NAME_CLIPPER = ->(file_basename){
-      MPS_FILE_NAME_REGEXP=~file_basename
-      $~[1]
+      m = MPS_FILE_NAME_REGEXP.match(file_basename)
+      m ? m[1] : "0"
     }
 
     # clip datestamp with hash accessibility from the mps filename
@@ -50,21 +50,19 @@ module MPS
     DEFAULT_CONF_HASH = {
       mps_dir: MPS_DIR,
       storage_dir: MPS_STORAGE_DIR,
-      log_file: MPS_LOG_FILE
+      log_file: MPS_LOG_FILE,
+      git_remote: "origin",
+      git_branch: "master"
     }
 
 
-    # at or @[]{} signature regexps
-    # at regexp with ignore group to have the
-    # strscan pointer at the begining of the at signature
-    AT_REGEXP_LA = /(?=@[a-zA-Z0-9]+?\[[\s\S]*?\]\s*?\{)/
-    # at regexp without ingnoring groups
-    AT_REGEXP = /@(?<element_sign>[a-zA-Z0-9_,:\s]+?)\[(?<args>.*?)\]\s*?\{/
+    # at or @[]{} signature regexps — brackets are optional: @task{ } and @task[]{ } both valid
+    AT_REGEXP_LA = /(?=@[a-zA-Z0-9_]+(?:\[[\s\S]*?\])?\s*\{)/
+    AT_REGEXP    = /@(?<element_sign>[a-zA-Z0-9_]+)(?:\[(?<args>[^\]]*)\])?\s*\{/
 
-    # end curly bracket regexp
-    # ignore group
+    # end curly bracket regexp — excludes } surrounded by single-quotes
     END_CURLY_REGEXP_LA = /(?=(?<!')\}(?!'))/
-    END_CURLY_REGEXP = /(?<!')\}(?!')/
+    END_CURLY_REGEXP    = /(?<!')\}(?!')/
 
   end
 end

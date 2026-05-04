@@ -8,10 +8,10 @@ Gem::Specification.new do |spec|
   spec.authors       = ["mash-97"]
   spec.email         = ["itzmashz@gmail.com"]
 
-  spec.summary       = "MPS (MonoPsyches)"
-  spec.description   = "Manage MonoPsyches."
+  spec.summary     = "Structured plain-text productivity CLI"
+  spec.description = "MPS (MonoPsyches) is a terminal-based productivity system that stores tasks, notes, reminders, logs, and nested workflow structures in plain-text .mps files. It provides composable typed elements with optional arguments, hierarchical organization, natural-language date handling, full-text search, statistics, export tools, and git integration while keeping all data human-readable and portable."
   spec.homepage      = "https://github.com/mash-97/mps"
-  spec.required_ruby_version = Gem::Requirement.new(">= 2.3.0")
+  spec.required_ruby_version = Gem::Requirement.new(">= 3.0.0")
 
   # spec.metadata["allowed_push_host"] = "TODO: Set to 'http://mygemserver.com'"
 
@@ -30,7 +30,7 @@ Gem::Specification.new do |spec|
 
   # Uncomment to register a new dependency of your gem
   # spec.add_dependency "example-gem", "~> 1.0"
-  spec.add_runtime_dependency "strscan", ">= 3.0"
+  spec.add_runtime_dependency "strscan", "~> 3.0"
   spec.add_runtime_dependency "thor", "~> 1.3"
   spec.add_runtime_dependency "tty-editor", "~> 0.7.0"
   spec.add_runtime_dependency "chronic", "~> 0.10.2"

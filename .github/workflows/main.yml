@@ -29,3 +29,6 @@ jobs:
 
       - name: Run tests
         run: bundle exec rake
+
+      - name: Run with groups tests
+        run: bundle exec rake test:with_groups

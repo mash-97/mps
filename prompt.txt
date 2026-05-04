@@ -1,0 +1,64 @@
+Re-analyze this repository from first principles.
+
+Do NOT rely only on previous memory/context. Re-read the codebase itself deeply, including:
+
+- README.md
+- GETTING_STARTED.md
+- CLAUDE.md
+- source code
+- configs
+- abstractions
+- interfaces/contracts
+- module boundaries
+- orchestration/composition systems
+- extension points
+- naming conventions
+- internal APIs
+- metaprogramming/framework-like constructs
+
+Your goal is NOT merely to explain what the code does.
+
+Your task is to reconstruct and infer:
+
+- the philosophy behind the system
+- the intended architectural direction
+- the design patterns and abstractions
+- the implementation methodology
+- the compositional/extensibility model
+- the long-term ecosystem vision emerging from the code
+- the difference between documented vision vs actual implementation
+- the difference between intentional architecture vs emergent architecture
+
+Treat this repository not just as an application, but potentially as:
+- a framework
+- DSL
+- compositional architecture system
+- ecosystem platform
+- runtime abstraction layer
+- modular engineering paradigm
+- or another evolving architectural model
+
+Analyze deeply:
+
+1. Core vision and goals
+2. Macro + micro architecture
+3. Design patterns (explicit and emergent)
+4. Dependency/layering philosophy
+5. Composition/extensibility strategy
+6. Naming and semantic modeling philosophy
+7. Current architectural maturity
+8. Strengths and architectural advantages
+9. Weaknesses, inconsistencies, and technical debt
+10. Scalability/evolution potential
+11. Architectural risks and future bottlenecks
+12. What this project is naturally evolving into
+
+Important:
+- Infer intent from implementation details.
+- Explain WHY architectural decisions appear to exist.
+- Identify unfinished abstractions and partially realized ideas.
+- Distinguish accidental complexity from intentional abstraction.
+- Be analytical and critical, not flattering.
+- Do not oversimplify the project into a generic CRUD/application architecture unless the code genuinely reflects that.
+
+Produce a comprehensive architecture understanding document that future AI agents and developers can use as the canonical mental model for evolving the system.

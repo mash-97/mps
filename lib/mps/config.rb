@@ -12,17 +12,22 @@ module MPS
     class MPSDirectoryNotFound < StandardError;end;
     class MPSStorageDirectoryNotFound < StandardError;end;
 
+    attr_reader :mps_dir
     attr_reader :storage_dir
     attr_reader :logger
     attr_reader :log_file
     attr_reader :git_remote
     attr_reader :git_branch
+    attr_reader :default_command
+    attr_reader :type_aliases
     def initialize(**conf_hash)
-      @mps_dir = conf_hash[:mps_dir]
+      @mps_dir         = conf_hash[:mps_dir]
       @storage_dir = conf_hash[:storage_dir]
       @log_file = conf_hash[:log_file]
-      @git_remote = conf_hash.fetch(:git_remote, "origin")
-      @git_branch = conf_hash.fetch(:git_branch, "master")
+      @git_remote      = conf_hash.fetch(:git_remote, "origin")
+      @git_branch      = conf_hash.fetch(:git_branch, "master")
+      @default_command = conf_hash.fetch(:default_command, "open")
+      @type_aliases    = conf_hash.fetch(:aliases, {})
       @logger = Logger.new(File.open(@log_file, "a+"))
       @logger.formatter = proc do |sev, time, pn, msg|
         time = time.strftime("[%Y-%m-%d %H:%M:%S]")

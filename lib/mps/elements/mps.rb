@@ -6,10 +6,7 @@ module MPS
       SIGNATURE_STAMP = "mps"
       SIGNATURE_REGEX = /\Amps\z/
       include Element
-
-      def self.parse_args(raw)
-        { tags: Element.split_args(raw)[:tags] }
-      end
+      # MPS is a grouping container; carries only tags.
     end
   end
 end

@@ -93,6 +93,24 @@ mps list
 
 The nested tree is preserved — child elements appear indented under their parent `[@mps]` group. Each type gets its own color in the terminal.
 
+### Show human-readable refs
+
+Pass `--refs` (or `-r`) to see addressable references alongside each element:
+
+```bash
+mps list --refs
+```
+
+```
+  task-1        [task] (open) Review the API pull request [work]
+  reminder-1    [reminder] (10am) Team standup
+  note-1        [note] The auth token expiry edge case
+  mps-1         [@mps]
+  mps-1.1         [task] (open) Nested backend task [backend]
+```
+
+These refs (`task-1`, `note-1`, `mps-1.1`, …) can be passed to `update` and `done`.
+
 ### Filter by type
 
 Only want tasks?
@@ -120,8 +138,6 @@ See only what's still open:
 mps list --status open
 mps list -s done
 ```
-
-Status filtering only applies to tasks — notes, logs, and reminders are excluded when you use `--status`.
 
 ### Look at a different day
 
@@ -197,7 +213,56 @@ The 3h30m duration is computed automatically and shown in `list`, `stats`, and `
 mps append reminder "Push the hotfix before EOD" --at "5pm"
 ```
 
+### Type aliases
+
+If you configure aliases in `~/.mps_config.yaml`:
+
+```yaml
+aliases:
+  t: task
+  n: note
+  r: reminder
+  l: log
+```
+
+You can use the short form:
+
+```bash
+mps append t "Quick task via alias"
+```
+
 All types supported by `append`: `task`, `note`, `log`, `reminder`.
+
+---
+
+## Updating elements in-place
+
+Found a task you finished? Mark it done without opening Vim:
+
+```bash
+mps done task-1
+```
+
+Need to update an arbitrary attribute?
+
+```bash
+mps update task-1 --status done
+mps update reminder-1 --at "6pm"
+mps update log-1 --end-time 13:00
+```
+
+Refs can be the human-readable form (`task-1`, `note-2`, `mps-1.1`) shown by `mps list --refs`, or the epoch-based form (`20260428.1`) which encodes the date and position.
+
+```bash
+# Epoch ref — works for any date without needing --date
+mps done 20260421.2
+
+# Human ref — defaults to today
+mps done task-1
+
+# Human ref for another date
+mps done task-1 --date yesterday
+```
 
 ---
 
@@ -241,6 +306,28 @@ mps search "auth" -S "2026-04-01"
 ```
 
 All filters compose: `mps search "auth" --type task --tag backend --since "last week"`.
+
+---
+
+## Tag usage summary
+
+See which tags you're using most:
+
+```bash
+mps tags
+```
+
+```
+  work (7)
+  backend (4)
+  personal (2)
+```
+
+Filter by type or date range:
+
+```bash
+mps tags --type task --since monday
+```
 
 ---
 
@@ -300,12 +387,6 @@ CSV format:
 mps export --format csv
 ```
 
-```
-date,ref,type,tags,body,status,at,start,end
-2026-04-28,1745000000.1,task,work,Review the API pull request,open,,,
-2026-04-28,1745000000.2,reminder,,Team standup,,10am,,
-```
-
 All the same filters apply:
 
 ```bash
@@ -357,6 +438,60 @@ git_branch: main
 
 ---
 
+## Configuration management
+
+View your current configuration:
+
+```bash
+mps config show
+```
+
+```
+MPS configuration
+  config file : /home/you/.mps_config.yaml
+  mps_dir     : /home/you/.mps
+  storage_dir : /home/you/.mps/mps
+  log_file    : /home/you/.mps/mps.log
+  git_remote  : origin
+  git_branch  : main
+  default_cmd : open
+```
+
+Open your config file in `$EDITOR`:
+
+```bash
+mps config edit
+```
+
+### Configuring the default command
+
+By default, bare `mps` opens today's file in Vim. To make `mps` list instead:
+
+```yaml
+default_command: list
+```
+
+### Type aliases
+
+Create short names for element types in your config:
+
+```yaml
+aliases:
+  t: task
+  n: note
+  r: reminder
+  l: log
+```
+
+Then use them with `append`:
+
+```bash
+mps append t "Quick capture"       # same as: mps append task
+mps append n "Remember this"       # same as: mps append note
+```
+
+---
+
 ## Run any shell command in your storage directory
 
 Need to see what files exist, or grep across everything raw?
@@ -388,9 +523,13 @@ mps version
 | `mps` / `mps open [date]` | Open a date's file in Vim (default: today) |
 | `mps list [date]` | Print elements in tree order (default: today) |
 | `mps append TYPE BODY` | Add one element to today's file without Vim |
+| `mps update REFPATH [--attr val]` | Update an element's attributes in-place |
+| `mps done REFPATH` | Mark a task as done (shorthand for update --status done) |
 | `mps search QUERY` | Full-text search across all files |
+| `mps tags [date]` | Show tag usage counts |
 | `mps stats [date]` | Element counts and log durations for a date |
 | `mps export [date]` | Export elements as JSON or CSV to stdout |
+| `mps config [show\|edit]` | View or edit configuration |
 | `mps autogit` | Stage, commit, pull, push in one shot |
 | `mps git ARGS` | Run any git command inside storage dir |
 | `mps cmd ARGS` | Run any shell command inside storage dir |
@@ -404,6 +543,7 @@ mps version
 | `--tag TAG` | `-g` | Filter by tag name |
 | `--status STATUS` | `-s` | Filter tasks by: `open`, `done` |
 | `--since DATESIGN` | `-S` | Show elements from SINCE up to DATESIGN |
+| `--refs` | `-r` | Show human-readable ref column |
 
 ### append options
 
@@ -414,6 +554,18 @@ mps version
 | `--at TIME` | Time for reminders (e.g. `5pm`) |
 | `--start-time HH:MM` | Start time for logs |
 | `--end-time HH:MM` | End time for logs |
+
+### update options
+
+All schema-declared attributes are available as flags. Current built-in:
+
+| Option | Description |
+|--------|-------------|
+| `--status STATUS` | New status value |
+| `--at TIME` | New time for reminders |
+| `--start-time HH:MM` | New start time for logs |
+| `--end-time HH:MM` | New end time for logs |
+| `--date DATESIGN` | Date context for human refs (default: today) |
 
 ### search options
 
@@ -437,6 +589,14 @@ mps version
 | `--type TYPE` | `-t` | Filter by element type |
 | `--since DATESIGN` | `-S` | Export from SINCE up to DATESIGN |
 
+### tags options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--type TYPE` | `-t` | Filter by element type |
+| `--since DATESIGN` | `-S` | Show tags from SINCE up to DATESIGN |
+| `--status STATUS` | `-s` | Filter tasks by status before counting |
+
 ### Date formats accepted everywhere
 
 | Input | Meaning |
@@ -445,3 +605,11 @@ mps version
 | `monday`, `last friday` | Day of week |
 | `2 days ago`, `last week` | Natural language |
 | `20260421` | Explicit YYYYMMDD |
+
+### Ref formats accepted by update and done
+
+| Format | Example | Scope |
+|--------|---------|-------|
+| Human top-level | `task-1` | Today's file (or `--date`) |
+| Human nested | `mps-1.1` | Today's file (or `--date`) |
+| Epoch-based | `20260428.2` | Any date (encoded in prefix) |

@@ -28,17 +28,10 @@ module MPS
         element_classes.find { |ec| str =~ ec::SIGNATURE_REGEX }
       end
 
-      # Peeks ahead in +str_scanner+ for +regex_la+ without consuming input.
-      # Returns the position of the match, or string size if no match.
-      def self.look_ahead_pos(str_scanner, regex_la)
-        return str_scanner.string.size unless str_scanner.scan_until(regex_la)
-        pos = str_scanner.pos
-        str_scanner.unscan
-        pos
-      end
-
       # Parses +mps_file_path+ into a flat hash of ref-path => element instances.
-      def self.parse_mps_file_to_elements_hash(mps_file_path, element_classes)
+      # Applies interpolators to body strings if +interpolator_classes+ are provided.
+      def self.parse_mps_file_to_elements_hash(mps_file_path, element_classes,
+                                               interpolator_classes: [])
         content  = File.read(mps_file_path)
         wrapped  = "@#{::MPS::Elements::MPS::SIGNATURE_STAMP}[]{\n#{content}\n}"
         base_ref = ::MPS::Constants::MPS_FILE_NAME_CLIPPER
@@ -94,7 +87,24 @@ module MPS
           end
         end
 
+        _apply_interpolations(elements, interpolator_classes) unless interpolator_classes.empty?
         elements
+      end
+
+      # Apply registered interpolators to the body_str of each element.
+      def self._apply_interpolations(elements, interpolator_classes)
+        return if interpolator_classes.empty?
+        elements.each_value do |el|
+          next unless el.respond_to?(:body_str)
+          body = el.instance_variable_get(:@body_str)
+          next unless body
+          interpolator_classes.each do |ic|
+            obj = ic.new
+            new_body = body.gsub(ic::SIGNATURE_REGEX) { obj.get_str }
+            el.instance_variable_set(:@body_str, new_body) if new_body != body
+            body = new_body
+          end
+        end
       end
 
       class << self

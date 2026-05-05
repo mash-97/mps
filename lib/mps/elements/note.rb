@@ -6,10 +6,7 @@ module MPS
       SIGNATURE_STAMP = "note"
       SIGNATURE_REGEX = /\Anote\z/
       include Element
-
-      def self.parse_args(raw)
-        { tags: Element.split_args(raw)[:tags] }
-      end
+      # Notes carry only tags; no typed attributes.
     end
   end
 end

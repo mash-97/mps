@@ -7,10 +7,7 @@ module MPS
       SIGNATURE_REGEX = /\Areminder\z/
       include Element
 
-      def self.parse_args(raw)
-        p = Element.split_args(raw)
-        { tags: p[:tags], at: p[:attrs][:at] }
-      end
+      attribute :at, type: :string, default: nil, flag: "at"
     end
   end
 end

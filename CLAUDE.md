@@ -39,30 +39,26 @@ bundle exec exe/mps append TYPE BODY [--tags work,release] [--at 3pm]
 bundle exec exe/mps autogit
 ```
 
-Set `MPS_DEBUG=true` to enable verbose `require_relative` tracing via the custom `ir()` loader.
-
 ## Architecture
 
 ### Entry point
 `exe/mps` calls `MPS::CLI::MPS.start(ARGV)` — a Thor-based CLI defined in `lib/cli/mps.rb`. All commands (`open`, `git`, `autogit`, `list`, `append`, `cmd`, `version`) live there and delegate to the library layer.
 
-### Custom loader (`ir`)
-`lib/mps/mps.rb` defines a global helper `ir(relative_path)` that wraps `require_relative` with caller-location resolution. All internal requires use `ir` instead of `require_relative`. This is intentional — don't replace it with standard requires.
-
 ### Load order (`lib/mps.rb`)
 ```
-mps/version → mps/mps (defines ir + MPS module methods) →
-  mps/constants → mps/config → mps/interpolators → mps/elements → mps/engines → cli/mps
+mps/version → mps/mps (MPS module methods) →
+  mps/constants → mps/config → mps/interpolators → mps/elements → mps/engines →
+  mps/ref_resolver → mps/query → mps/presenter → mps/store → cli/mps → mps/cli/commands
 ```
 
 ### Parsing pipeline (`lib/mps/engines/mps.rb`)
-`Engines::MPS.parse_mps_file_to_elments_hash` reads an `.mps` file and uses `StringScanner` to tokenize it. It wraps the raw file contents in a synthetic `@mps[]{}` root element, then does a single-pass scan driven by two regexes from `Constants`: `AT_REGEXP_LA` (lookahead for `@element[args]{`) and `END_CURLY_REGEXP_LA` (lookahead for `}`). A stack tracks nesting; each closed element is instantiated and stored in a flat hash keyed by a dotted ref path (e.g. `"1234567890.1.2"`).
+`Engines::Parser.parse_mps_file_to_elements_hash` reads an `.mps` file and uses a position-based stack parser with `Regexp#match(str, pos)`. It wraps the raw file contents in a synthetic `@mps[]{}` root element, then iterates using two regexes from `Constants`: `AT_REGEXP` (opening `@element[args]{`) and `END_CURLY_REGEXP` (closing `}`). A stack tracks nesting; each closed element is instantiated and stored in a flat hash keyed by a dotted ref path (e.g. `"1234567890.1.2"`). `Engines::MPS` is a backward-compat alias for `Engines::Parser`.
 
 ### Elements (`lib/mps/elements/`)
 Each element type (Task, Note, Reminder, Log, MPS) is a class that `include`s the `MPS::Element` mixin. The mixin provides `initialize(args:, refs:, body_str:)`, `display_str`, and `attr_reader :body_str`. Each class must define `SIGNATURE_STAMP` (used when generating filenames/wrapping) and `SIGNATURE_REGEX` (matched against the parsed element sign to dispatch). The engine discovers all element classes dynamically via `MPS::Elements.constants`.
 
 ### Interpolators (`lib/mps/interpolators/`)
-Interpolator classes (e.g. `Interpolators::Time`) are discovered the same way as elements — via `const_get` on the module's `constants`. Each defines `SIGNATURE_REGEX` and `get_str(**ref)`. They are loaded into `Engines::MPS` but the interpolation call-site is not yet wired up in the engine.
+Interpolator classes (e.g. `Interpolators::Time`) are discovered the same way as elements — via `const_get` on the module's `constants`. Each defines `SIGNATURE_REGEX` and `get_str`. The parser applies them to body strings after the main parse loop via `_apply_interpolations`.
 
 ### Configuration (`lib/mps/config.rb` + `lib/mps/constants.rb`)
 `Config.init(path)` writes a default YAML config. `Config.new(**hash)` holds `storage_dir`, `mps_dir`, `log_file`, and a `Logger`. Two additional optional YAML keys are supported: `git_remote` (default `"origin"`) and `git_branch` (default `"master"`); both are exposed as `attr_reader`s and used by `git` and `autogit` commands. The CLI re-reads the config on every invocation via `load_config`; it auto-creates missing directories and the log file.
@@ -97,6 +93,6 @@ File names follow `YYYYMMDD.<epoch>.mps`; the epoch disambiguates multiple files
 
 Tests use Minitest with `fakefs` for filesystem isolation. The test helper at `test/test_helper.rb` sets up the load path and does `include MPS`, so all constants and module methods are available directly in test classes.
 
-`test/engine_test.rb` tests the parser directly: it uses a `parse_content(str)` helper that writes a fixture file under `FakeFS` at `/tmp/20260101.mps` and calls `Engines::MPS.parse_mps_file_to_elments_hash` on it. Covers empty files, single and multiple elements, unknown element fallback to `Struct`, nested `@mps{}`, `matched_element_class`, and `look_ahead_pos` edge cases.
+`test/engine_test.rb` tests the parser directly: it uses a `parse_content(str)` helper that writes a fixture file under `FakeFS` at `/tmp/20260101.mps` and calls `Engines::Parser.parse_mps_file_to_elements_hash` on it. Covers empty files, single and multiple elements, unknown element fallback to `Struct`, nested `@mps{}`, `matched_element_class`, and `look_ahead_pos` edge cases.
 
 `test/config_test.rb` covers `Config.init`, `Config.load_conf_hash` (including `git_remote`/`git_branch` defaults), logger formatting, and `LoadError` on missing keys.

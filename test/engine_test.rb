@@ -18,7 +18,7 @@ class EngineTest < Minitest::Test
       FileUtils.mkdir_p("/tmp")
       path = "/tmp/#{VALID_FAKE_FILENAME}"
       File.write(path, content)
-      ::MPS::Engines::MPS.parse_mps_file_to_elements_hash(path, element_classes_fixture)
+      ::MPS::Engines::Parser.parse_mps_file_to_elements_hash(path, element_classes_fixture)
     end
   end
 
@@ -51,7 +51,7 @@ class EngineTest < Minitest::Test
     unknown = elements.values.reject { |e| e.class == ::MPS::Elements::MPS }
     assert_equal 1, unknown.size
     el = unknown.first
-    assert_instance_of ::MPS::Engines::MPS::Unknown, el
+    assert_instance_of ::MPS::Engines::Parser::Unknown, el
     assert_equal "foobar", el.ecn
     assert_equal "unknown stuff", el.body_str.strip
     assert el.respond_to?(:ecn)
@@ -96,19 +96,13 @@ class EngineTest < Minitest::Test
   end
 
   def test_matched_element_class_known
-    result = ::MPS::Engines::MPS.matched_element_class("task", element_classes_fixture)
+    result = ::MPS::Engines::Parser.matched_element_class("task", element_classes_fixture)
     assert_equal ::MPS::Elements::Task, result
   end
 
   def test_matched_element_class_unknown
-    result = ::MPS::Engines::MPS.matched_element_class("nonexistent_xyz", element_classes_fixture)
+    result = ::MPS::Engines::Parser.matched_element_class("nonexistent_xyz", element_classes_fixture)
     assert_nil result
   end
 
-  def test_look_ahead_pos_no_match
-    scanner = StringScanner.new("hello world no match here")
-    scanner.scan(/hello /)
-    pos = ::MPS::Engines::MPS.look_ahead_pos(scanner, /IMPOSSIBLE_PATTERN_XYZ/)
-    assert_equal scanner.string.size, pos
-  end
 end

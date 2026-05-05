@@ -6,8 +6,9 @@
 /pkg/
 /spec/reports/
 /tmp/
-*.lock
 *.mps
+!test/assets/*.mps
 /vendor/
-**/**/*.gem
-
+*.gem
+.claude/
+prompt-for-v1-rollout.txt

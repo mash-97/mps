@@ -7,10 +7,8 @@ module MPS
       SIGNATURE_REGEX = /\Alog\z/
       include Element
 
-      def self.parse_args(raw)
-        p = Element.split_args(raw)
-        { tags: p[:tags], start: p[:attrs][:start], end: p[:attrs][:end] }
-      end
+      attribute :start, type: :time, default: nil, flag: "start-time"
+      attribute :end,   type: :time, default: nil, flag: "end-time"
 
       def duration_minutes
         s = parsed_args[:start]

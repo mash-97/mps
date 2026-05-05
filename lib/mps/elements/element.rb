@@ -2,7 +2,46 @@
 
 module MPS
   module Element
-    PADDING = '  '
+    # Called when Element is included in a class. Extends the class with
+    # ClassMethods, enabling the `attribute` schema DSL.
+    def self.included(base)
+      base.extend(ClassMethods)
+    end
+
+    module ClassMethods
+      # Declare a typed attribute for this element class.
+      #
+      # @param name [Symbol]  parsed_args key
+      # @param type [Symbol]  :string, :time, :integer (for future coercion)
+      # @param default        value when the attribute is absent from args
+      # @param flag [String]  CLI flag name (without --); nil = not filterable
+      # @param aliases [Array<String>] short CLI aliases for this flag
+      def attribute(name, type: :string, default: nil, flag: nil, aliases: [])
+        _schema[name] = { type: type, default: default, flag: flag, aliases: Array(aliases) }
+      end
+
+      # Internal mutable schema hash.
+      def _schema
+        @_schema ||= {}
+      end
+
+      # Frozen public view of the schema.
+      def schema
+        _schema.dup.freeze
+      end
+
+      # Schema-driven parse_args. Subclasses do NOT need to override this.
+      # Any key: value pair in raw whose key matches a declared attribute name
+      # is extracted; remaining bare words become tags.
+      def parse_args(raw)
+        split = ::MPS::Element.split_args(raw)
+        result = { tags: split[:tags] }
+        _schema.each do |name, defn|
+          result[name] = split[:attrs].fetch(name, defn[:default])
+        end
+        result
+      end
+    end
 
     # Parses "work, release, status: done" → { attrs: { status: "done" }, tags: ["work", "release"] }
     # Parts containing ":" become named attrs; bare words become tags.
@@ -23,8 +62,7 @@ module MPS
       { attrs: attrs, tags: tags }
     end
 
-    attr_accessor :disp_str
-    attr_reader   :body_str, :raw_args, :parsed_args
+    attr_reader :body_str, :raw_args, :parsed_args
 
     def initialize(args:, refs:, body_str:)
       @raw_args    = args.to_s
@@ -36,14 +74,6 @@ module MPS
 
     def tags
       @parsed_args.fetch(:tags, [])
-    end
-
-    def display_str(padding_size = @refs.size - 1)
-      strs = @body_str.strip.lines.map(&:strip)
-      header = strs.first
-      res_strs = [(PADDING * padding_size) + header]
-      strs[1..].each { |str| res_strs << (PADDING * padding_size) + str }
-      res_strs.join("\n")
     end
   end
 end

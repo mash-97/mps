@@ -1,58 +1,97 @@
-# MPS (MonoPsyches)
+# MPS — MonoPsyches
 
-MPS is a plain-text personal productivity CLI. Tasks, notes, reminders, and logs live in date-stamped `.mps` files stored in `~/.mps/mps/`. Files are opened in Vim; a git integration handles sync. Everything is plain text — no app, no database, no account.
+Your tasks, notes, logs, and reminders in plain-text files. One file per day, stored in `~/.mps/mps/`, opened in Vim, synced through git. No app, no account, no database.
 
-## Features
+```
+$ mps list --refs
 
-- **Date-based files** — one or more `.mps` files per day (`20260428.1745000000.mps`)
-- **Structured elements** — tasks (with status), notes, reminders (with time), logs (with duration)
-- **Nested elements** — `@mps{ @task{ ... } }` for grouping; `list` renders the tree
-- **Typed argument parsing** — tags and named attrs (`status: done`, `at: 5pm`, `start: 09:00, end: 12:30`)
-- **Full command set** — `list`, `append`, `search`, `stats`, `export`, `open`, `git`, `autogit`, `cmd`
-- **Date ranges** — every listing/search/stats/export command accepts `--since` for multi-day views
-- **Git integration** — configurable remote and branch; `autogit` stages, commits, pulls, and pushes in one shot
-- **Plain text storage** — grep it, pipe it, open it in any editor
+  task-1        [task] (open) Review the API pull request [work]
+  reminder-1    [reminder] (10am) Team standup
+  note-1        [note] Auth token expiry edge case needs a second look
+  mps-1         [@mps] sprint
+    mps-1.1       [task] (done) Set up the CI pipeline [devops]
+    mps-1.2       [task] (open) Write migration script [backend]
+```
 
-## Installation
+---
+
+## Install
 
 ```bash
 gem install mps
 ```
 
-Or add to your Gemfile:
+First run creates `~/.mps_config.yaml` and your storage directory automatically.
 
-```ruby
-gem 'mps'
-```
+---
+
+## Features
+
+- **Plain-text storage** — one `.mps` file per day; grep it, pipe it, open it in any editor
+- **Four element types** — `@task`, `@note`, `@log`, `@reminder` with typed arguments
+- **Nested elements** — `@mps{ @task{...} }` groups render as an indented tree
+- **Quick capture** — `mps append task "idea"` lands in today's file without opening Vim
+- **In-place editing** — `mps done task-1` or `mps update task-1 --status done` rewrites the file atomically
+- **Full-text search** — across your entire archive; filter by type, tag, or date
+- **Tag frequency** — `mps tags --all` renders a bar chart of everything you've ever tagged
+- **Stats at a glance** — open/done counts and total logged hours per day, with totals across ranges
+- **Natural language dates** — `mps list "last friday"`, `mps stats --since monday`
+- **Git integration** — `mps autogit` stages, commits, pulls, and pushes in one shot
+
+---
 
 ## Quick start
 
+It's Monday morning. You open your terminal:
+
 ```bash
-mps                   # open today's file in Vim
-mps list              # print today's elements (nested tree)
-mps append task "Fix the token bug" --tags backend --status open
-mps search "token" --type task --since "last week"
-mps stats --since monday
-mps export --format csv --since "2026-04-01" > april.csv
-mps autogit           # stage + commit + pull + push
+mps                  # open today's file in Vim — write your plan, save, quit
+mps list             # see everything you wrote
+mps list --refs      # same view, with addressable refs like task-1, note-2
 ```
 
-See [GETTING_STARTED.md](GETTING_STARTED.md) for a full walkthrough with examples.
+You're deep in work. A thought hits you:
+
+```bash
+mps append task "Check if the race condition only happens under load" --tags backend
+mps done task-1      # mark something finished without leaving the terminal
+```
+
+End of week:
+
+```bash
+mps stats --since monday          # task counts + logged hours per day
+mps tags --all                    # what you've been spending time on
+mps search "auth" --type log      # find that debugging session from last week
+mps autogit                       # commit and push everything
+```
+
+See [GETTING_STARTED.md](GETTING_STARTED.md) for the full walkthrough.
+
+---
 
 ## Commands
 
-| Command | Description |
+| Command | What it does |
 |---------|-------------|
-| `mps [open] [date]` | Open a date's file in Vim (default: today) |
-| `mps list [date]` | Print elements as an indented tree |
-| `mps append TYPE BODY` | Append one element to today's file without Vim |
+| `mps [open] [DATE]` | Open today's (or a date's) file in Vim |
+| `mps list [DATE]` | Print elements as a nested tree |
+| `mps append TYPE BODY` | Add one element to today's file without Vim |
+| `mps update REFPATH` | Update an element's attributes in-place |
+| `mps done REFPATH` | Mark a task done (shorthand for `update --status done`) |
 | `mps search QUERY` | Full-text search across all `.mps` files |
-| `mps stats [date]` | Element counts and log durations |
-| `mps export [date]` | JSON or CSV to stdout |
+| `mps stats [DATE]` | Element counts and log durations |
+| `mps tags [DATE]` | Tag frequency bar chart |
+| `mps export [DATE]` | JSON or CSV to stdout |
+| `mps config [show\|edit]` | View or edit your configuration |
 | `mps autogit` | Stage, commit, pull, push |
-| `mps git ARGS` | Any git command inside storage dir |
-| `mps cmd ARGS` | Any shell command inside storage dir |
+| `mps git ARGS` | Any git command inside your storage directory |
+| `mps cmd ARGS` | Any shell command inside your storage directory |
 | `mps version` | Print version |
+
+Every listing, stats, search, and tags command accepts `--since DATESIGN` for multi-day views and `--all` to span your entire archive.
+
+---
 
 ## File format
 
@@ -62,7 +101,7 @@ See [GETTING_STARTED.md](GETTING_STARTED.md) for a full walkthrough with example
 }
 
 @note{
-  The auth token expiry edge case needs a second look
+  Auth token expiry edge case needs a second look
 }
 
 @reminder[at: 10am]{
@@ -73,14 +112,16 @@ See [GETTING_STARTED.md](GETTING_STARTED.md) for a full walkthrough with example
   Debugging the auth flow
 }
 
-@mps{
+@mps[sprint]{
   @task[backend]{
-    Nested task inside a sub-block
+    Nested task inside a sprint block
   }
 }
 ```
 
-Brackets are optional — `@task{ body }` is valid. Elements nest freely.
+Brackets are optional — `@task{ body }` is valid. Elements nest freely. Files are named `YYYYMMDD.<epoch>.mps` (epoch disambiguates multiple files per day).
+
+---
 
 ## Configuration
 
@@ -91,88 +132,36 @@ mps_dir: ~/.mps
 storage_dir: ~/.mps/mps
 log_file: ~/.mps/mps.log
 git_remote: origin
-git_branch: main
+git_branch: master
+default_command: open    # change to "list" to make bare `mps` list instead of open
+aliases: {}              # e.g. {t: task, n: note, l: log, r: reminder}
 ```
-
-## Architecture
-
-MPS follows a layered architecture: parser → element types → store → CLI.
-
-### Load order
-
-```
-mps/version → mps/mps (defines ir()) →
-  mps/constants → mps/config → mps/interpolators →
-  mps/elements → mps/engines → mps/store → cli/mps
-```
-
-### Parser (`lib/mps/engines/mps.rb`)
-
-A single-pass, position-based stack parser. Each iteration finds the nearest `@element[args]{` or `}` from the current position; whichever comes first wins. A stack frame carries the element sign, args, body start offset, child counter, and ref path. Closed frames become element instances, keyed by dotted ref paths (`epoch.1.2` = second child of first top-level element).
-
-### Elements (`lib/mps/elements/`)
-
-Each type includes the `Element` mixin which provides `split_args`, `parsed_args`, `raw_args`, and `tags`. Type-specific `parse_args` class methods handle named attributes: tasks have `status`, logs have `start`/`end` (from which `duration_minutes` and `duration_str` are derived), reminders have `at`.
-
-### Store (`lib/mps/store.rb`)
-
-A library class that owns all filesystem work — finding files by date, creating new paths, parsing, appending, searching. The CLI delegates entirely to Store; there are no direct file operations in `lib/cli/mps.rb`.
 
 ---
 
-## Before and after: what Claude changed
+## Architecture
 
-The pre-Claude baseline (commit `66ac095`) had only five commands (`open`, `git`, `autogit`, `cmd`, `version`) and a fragile engine. Here is what changed and why.
+MPS follows a layered pipeline: parser → typed elements → store → CLI. The parser is a single-pass stack machine; the store owns all filesystem work; the CLI is a thin Thor dispatcher. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design document.
 
-### Parser
-
-| Before | After |
-|--------|-------|
-| Flip-flop `at_first` boolean; double `scan_until` per loop | Position-based stack: `Regexp#match(str, pos)` picks nearer of open/close each iteration |
-| `AT_REGEXP` required brackets — `@task{ }` was invisible | Brackets made optional: `(?:\[(?<args>[^\]]*)\])?` |
-| Partial sign match `/task/` could match `@taskboard` | Exact match `/\Atask\z/` |
-| `eval("::MPS::Elements::#{k}")` for class lookup | `Elements.const_get(k)` — no code evaluation |
-| `instance_eval("attr_accessor :disp_str")` on Unknown | `Unknown = Struct.new(:ecn, :args, :refs, :body_str)` |
-| `rescue Exception` swallowed signals | `rescue StandardError` throughout |
-
-### Element types
-
-| Before | After |
-|--------|-------|
-| No argument parsing — args string was opaque | `split_args` parses `"work, status: done"` → tags + attrs hash |
-| No status, duration, or time accessors | `done?`, `open?`, `duration_str`, `duration_minutes`, `at` |
-| `# frozen string_literal: true` (space typo, magic comment inactive) | `# frozen_string_literal: true` |
-
-### Store layer
-
-Before: CLI methods did their own `Dir.glob`, `File.read`, and `File.write`. No shared abstraction.
-
-After: `MPS::Store` owns all file operations. One place to fix bugs; CLI is thin orchestration only.
-
-A specific fix during Store development: `Dir.glob().grep(MPS_FILE_NAME_REGEXP)` matched against full paths (e.g. `/home/you/.mps/mps/20260428.mps`) while the regexp was anchored to basenames. Changed to `.select { |f| File.basename(f) =~ regexp }`.
-
-### CLI
-
-| Before | After |
-|--------|-------|
-| `open`, `git`, `autogit`, `cmd`, `version` | + `list`, `append`, `search`, `stats`, `export` |
-| `git pull orign master` typo | `git pull #{git_remote} #{git_branch}` (configurable) |
-| `git_remote`/`git_branch` hardcoded | Read from config YAML |
-| No output formatting | Colorized type badges, status/duration/time extras, nested tree |
+---
 
 ## Requirements
 
-- Ruby >= 2.3.0
-- Vim (for `open` / default command)
+- Ruby >= 3.1
+- Vim (for `open`)
 - Git (for `git` / `autogit`)
 
 ## Dependencies
 
-- `thor` — CLI framework
-- `tty-editor` — editor integration
-- `chronic` — natural-language date parsing
-- `cli-ui` — terminal UI (multi-file prompt)
-- `strscan` — string scanning in parser
+- [`thor`](https://github.com/rails/thor) — CLI framework
+- [`tty-editor`](https://github.com/piotrmurach/tty-editor) — editor integration
+- [`chronic`](https://github.com/mojombo/chronic) — natural-language date parsing
+- [`cli-ui`](https://github.com/Shopify/cli-ui) — terminal color and formatting
+
+## See also
+
+- [GETTING_STARTED.md](GETTING_STARTED.md) — full walkthrough with real examples
+- [ARCHITECTURE.md](ARCHITECTURE.md) — design document for contributors
 
 ## Contributing
 

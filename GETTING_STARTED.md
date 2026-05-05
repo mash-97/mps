@@ -1,6 +1,6 @@
 # Getting Started with MPS
 
-MPS is a plain-text productivity system that lives in your terminal. Your tasks, notes, reminders, and logs are just `.mps` files in a folder — readable, portable, and git-backed. No app to install, no account to create, no sync service to trust.
+MPS is a plain-text productivity system that lives entirely in your terminal. Your tasks, notes, reminders, and logs are just `.mps` files in a folder — readable by any editor, portable, and git-backed. No app to install beyond the gem, no account to create, no sync service to trust.
 
 ---
 
@@ -41,14 +41,14 @@ Before anything else, it helps to know what you're working with. Each `.mps` fil
   Debugging the auth flow
 }
 
-@mps{
+@mps[sprint]{
   @task[backend]{
-    Nested task inside a sub-block
+    Nested task inside a sprint block
   }
 }
 ```
 
-The brackets are optional — `@task{ body }` is perfectly valid. Elements nest freely. Files are named `YYYYMMDD.<epoch>.mps` — the epoch allows multiple files per day without collision.
+The brackets are optional — `@task{ body }` is perfectly valid. Elements nest freely inside `@mps{}` blocks. Files are named `YYYYMMDD.<epoch>.mps` — the epoch allows multiple files per day without collision.
 
 ---
 
@@ -60,7 +60,7 @@ It's Monday morning. You open your terminal:
 mps
 ```
 
-Vim opens with today's file — `20260428.1745000000.mps`. You write your morning plan, save, and quit. That's your day started.
+Vim opens with today's file. You write your sprint plan — a few `@task` entries, a `@note` about something to watch out for — save, and quit. Day started.
 
 If you want a specific date instead:
 
@@ -87,11 +87,11 @@ mps list
   [task] (open) Review the API pull request [work]
   [reminder] (10am) Team standup
   [note] The auth token expiry edge case needs a second look
-  [@mps]
+  [@mps] sprint
     [task] (open) Nested backend task [backend]
 ```
 
-The nested tree is preserved — child elements appear indented under their parent `[@mps]` group. Each type gets its own color in the terminal.
+The nested tree is preserved — child elements appear indented under their `[@mps]` group. Each type gets its own color in the terminal.
 
 ### Show human-readable refs
 
@@ -105,11 +105,11 @@ mps list --refs
   task-1        [task] (open) Review the API pull request [work]
   reminder-1    [reminder] (10am) Team standup
   note-1        [note] The auth token expiry edge case
-  mps-1         [@mps]
-  mps-1.1         [task] (open) Nested backend task [backend]
+  mps-1         [@mps] sprint
+    mps-1.1       [task] (open) Nested backend task [backend]
 ```
 
-These refs (`task-1`, `note-1`, `mps-1.1`, …) can be passed to `update` and `done`.
+These refs (`task-1`, `note-1`, `mps-1.1`, …) can be passed directly to `update` and `done`.
 
 ### Filter by type
 
@@ -117,7 +117,6 @@ Only want tasks?
 
 ```bash
 mps list --type task
-# short form:
 mps list -t task
 ```
 
@@ -149,23 +148,35 @@ mps list 20260421
 
 ### Date ranges with `--since`
 
-Want everything from the last week up to today?
+Everything from last Monday to today:
 
 ```bash
 mps list --since "last monday"
 ```
 
-This prints a date header for each day that has entries:
-
 ```
-── 2026-04-25 ─────────────
+── 2026-04-22 ─────────────
   [task] (done) Set up CI pipeline [devops]
 ── 2026-04-28 ─────────────
   [task] (open) Review the API pull request [work]
   [note] Token expiry edge case
 ```
 
-Combine filters freely: `mps list --since yesterday --type task --status open` shows all open tasks from yesterday to today.
+Date headers only appear for days that have entries. Combine filters freely:
+
+```bash
+mps list --since yesterday --type task --status open
+```
+
+### Across your entire archive with `--all`
+
+See every element you've ever written:
+
+```bash
+mps list --all
+mps list --all --type task --status open    # all open tasks, ever
+mps list --all --since "2026-01-01"         # all of this year
+```
 
 ---
 
@@ -181,7 +192,7 @@ mps append note "Check if the race condition only happens under load"
   appended  [note] Check if the race condition only happens under load
 ```
 
-The note lands at the bottom of today's file.
+The note lands at the bottom of today's file instantly.
 
 ### Append with tags
 
@@ -189,17 +200,13 @@ The note lands at the bottom of today's file.
 mps append task "Fix the token expiry bug" --tags work,backend
 ```
 
-### Append a task with status
-
-Already done? Mark it immediately:
+### Append a task that's already done
 
 ```bash
 mps append task "Reviewed the PR" --tags work --status done
 ```
 
 ### Log your time
-
-Log a focused work session with start and end times:
 
 ```bash
 mps append log "Deep work on auth refactor" --tags work --start-time 09:00 --end-time 12:30
@@ -215,7 +222,7 @@ mps append reminder "Push the hotfix before EOD" --at "5pm"
 
 ### Type aliases
 
-If you configure aliases in `~/.mps_config.yaml`:
+You can define short names in `~/.mps_config.yaml`:
 
 ```yaml
 aliases:
@@ -225,10 +232,11 @@ aliases:
   l: log
 ```
 
-You can use the short form:
+Then use the short form:
 
 ```bash
-mps append t "Quick task via alias"
+mps append t "Quick capture"    # same as: mps append task
+mps append n "Remember this"    # same as: mps append note
 ```
 
 All types supported by `append`: `task`, `note`, `log`, `reminder`.
@@ -243,7 +251,7 @@ Found a task you finished? Mark it done without opening Vim:
 mps done task-1
 ```
 
-Need to update an arbitrary attribute?
+Need to change an arbitrary attribute?
 
 ```bash
 mps update task-1 --status done
@@ -254,13 +262,13 @@ mps update log-1 --end-time 13:00
 Refs can be the human-readable form (`task-1`, `note-2`, `mps-1.1`) shown by `mps list --refs`, or the epoch-based form (`20260428.1`) which encodes the date and position.
 
 ```bash
-# Epoch ref — works for any date without needing --date
+# Epoch ref — works for any date, no --date needed
 mps done 20260421.2
 
 # Human ref — defaults to today
 mps done task-1
 
-# Human ref for another date
+# Human ref for a different day
 mps done task-1 --date yesterday
 ```
 
@@ -275,8 +283,8 @@ mps search "auth"
 ```
 
 ```
-2026-04-28 [log] (3h30m) Debugging the auth flow [work, backend]
-2026-04-21 [task] (done) Fix auth token expiry [backend]
+20260428 [log] (3h30m) Debugging the auth flow [work, backend]
+20260421 [task] (done) Fix auth token expiry [backend]
 (2 results)
 ```
 
@@ -318,36 +326,43 @@ mps tags
 ```
 
 ```
-  work (7)
-  backend (4)
-  personal (2)
+  Tag          Count  Frequency
+  -----------  -----  ------------------------
+  work             7  ████████████████████████
+  backend          4  ██████████████
+  personal         2  ███████
+```
+
+Across your entire archive:
+
+```bash
+mps tags --all
 ```
 
 Filter by type or date range:
 
 ```bash
 mps tags --type task --since monday
+mps tags --all --since "2026-01-01"
 ```
 
 ---
 
 ## Your productivity at a glance
 
-Friday afternoon. How did your week go?
+Friday afternoon. How did the week go?
 
 ```bash
 mps stats --since monday
 ```
 
 ```
-2026-04-25 — 2 tasks (1 open, 1 done), 1 note, 1 log (2h)
-2026-04-26 — 1 task (0 open, 1 done), 2 logs (5h30m)
+2026-04-22 — 2 tasks (1 open, 1 done), 1 note, 1 log (2h)
+2026-04-23 — 1 task (0 open, 1 done), 2 logs (5h30m)
 2026-04-28 — 3 tasks (2 open, 1 done), 1 note, 1 reminder, 1 log (3h30m)
-────────────────────────────────────────────────
+────────────────────────────────────────────
 Total: 6 tasks, 3 notes, 1 reminder, 3 logs (11h total)
 ```
-
-Open vs done task counts, total logged hours, everything in one view.
 
 For a single day:
 
@@ -357,11 +372,18 @@ mps stats yesterday
 mps stats 20260421
 ```
 
+For everything, ever:
+
+```bash
+mps stats --all
+mps stats --all --since "2026-01-01"
+```
+
 ---
 
 ## Export your data
 
-Need to feed your `.mps` data into a spreadsheet, script, or another tool?
+Need to feed your data into a spreadsheet, script, or another tool?
 
 ```bash
 mps export --format json
@@ -371,13 +393,12 @@ mps export --format json
 [
   {
     "date": "2026-04-28",
-    "ref": "1745000000.1",
+    "ref": "20260428.1",
     "type": "task",
     "tags": "work",
     "body": "Review the API pull request",
     "status": "open"
-  },
-  ...
+  }
 ]
 ```
 
@@ -393,7 +414,7 @@ All the same filters apply:
 # Export all tasks this week
 mps export --since monday --type task --format csv > this_week_tasks.csv
 
-# Export everything from a specific day as JSON
+# Export a specific day as JSON
 mps export 20260421 --format json > april21.json
 
 # Pipe into jq
@@ -426,12 +447,9 @@ Every `mps git` command runs inside your storage directory — no `cd` needed.
 
 ### Configure your remote and branch
 
-By default MPS pushes to `origin` on `master`. To use a different remote or branch, edit `~/.mps_config.yaml`:
+Edit `~/.mps_config.yaml`:
 
 ```yaml
-mps_dir: /home/you/.mps
-storage_dir: /home/you/.mps/mps
-log_file: /home/you/.mps/mps.log
 git_remote: origin
 git_branch: main
 ```
@@ -453,7 +471,7 @@ MPS configuration
   storage_dir : /home/you/.mps/mps
   log_file    : /home/you/.mps/mps.log
   git_remote  : origin
-  git_branch  : main
+  git_branch  : master
   default_cmd : open
 ```
 
@@ -465,29 +483,10 @@ mps config edit
 
 ### Configuring the default command
 
-By default, bare `mps` opens today's file in Vim. To make `mps` list instead:
+By default, bare `mps` opens today's file in Vim. To make `mps` show today's list instead:
 
 ```yaml
 default_command: list
-```
-
-### Type aliases
-
-Create short names for element types in your config:
-
-```yaml
-aliases:
-  t: task
-  n: note
-  r: reminder
-  l: log
-```
-
-Then use them with `append`:
-
-```bash
-mps append t "Quick capture"       # same as: mps append task
-mps append n "Remember this"       # same as: mps append note
 ```
 
 ---
@@ -520,15 +519,15 @@ mps version
 
 | Command | What it does |
 |---------|-------------|
-| `mps` / `mps open [date]` | Open a date's file in Vim (default: today) |
-| `mps list [date]` | Print elements in tree order (default: today) |
+| `mps` / `mps open [DATE]` | Open a date's file in Vim (default: today) |
+| `mps list [DATE]` | Print elements in tree order (default: today) |
 | `mps append TYPE BODY` | Add one element to today's file without Vim |
 | `mps update REFPATH [--attr val]` | Update an element's attributes in-place |
-| `mps done REFPATH` | Mark a task as done (shorthand for update --status done) |
+| `mps done REFPATH` | Mark a task as done (shorthand for `update --status done`) |
 | `mps search QUERY` | Full-text search across all files |
-| `mps tags [date]` | Show tag usage counts |
-| `mps stats [date]` | Element counts and log durations for a date |
-| `mps export [date]` | Export elements as JSON or CSV to stdout |
+| `mps tags [DATE]` | Tag frequency bar chart |
+| `mps stats [DATE]` | Element counts and log durations |
+| `mps export [DATE]` | Export elements as JSON or CSV to stdout |
 | `mps config [show\|edit]` | View or edit configuration |
 | `mps autogit` | Stage, commit, pull, push in one shot |
 | `mps git ARGS` | Run any git command inside storage dir |
@@ -543,6 +542,7 @@ mps version
 | `--tag TAG` | `-g` | Filter by tag name |
 | `--status STATUS` | `-s` | Filter tasks by: `open`, `done` |
 | `--since DATESIGN` | `-S` | Show elements from SINCE up to DATESIGN |
+| `--all` | `-a` | List elements across all dates |
 | `--refs` | `-r` | Show human-readable ref column |
 
 ### append options
@@ -556,8 +556,6 @@ mps version
 | `--end-time HH:MM` | End time for logs |
 
 ### update options
-
-All schema-declared attributes are available as flags. Current built-in:
 
 | Option | Description |
 |--------|-------------|
@@ -580,6 +578,16 @@ All schema-declared attributes are available as flags. Current built-in:
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--since DATESIGN` | `-S` | Stats from SINCE up to DATESIGN |
+| `--all` | `-a` | Stats across all dates |
+
+### tags options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--type TYPE` | `-t` | Filter by element type |
+| `--since DATESIGN` | `-S` | Tags from SINCE up to DATESIGN |
+| `--all` | `-a` | Count tags across all dates |
+| `--status STATUS` | `-s` | Filter tasks by status before counting |
 
 ### export options
 
@@ -588,14 +596,6 @@ All schema-declared attributes are available as flags. Current built-in:
 | `--format FORMAT` | `-f` | Output format: `json` (default), `csv` |
 | `--type TYPE` | `-t` | Filter by element type |
 | `--since DATESIGN` | `-S` | Export from SINCE up to DATESIGN |
-
-### tags options
-
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--type TYPE` | `-t` | Filter by element type |
-| `--since DATESIGN` | `-S` | Show tags from SINCE up to DATESIGN |
-| `--status STATUS` | `-s` | Filter tasks by status before counting |
 
 ### Date formats accepted everywhere
 
@@ -606,10 +606,10 @@ All schema-declared attributes are available as flags. Current built-in:
 | `2 days ago`, `last week` | Natural language |
 | `20260421` | Explicit YYYYMMDD |
 
-### Ref formats accepted by update and done
+### Ref formats accepted by `update` and `done`
 
 | Format | Example | Scope |
 |--------|---------|-------|
 | Human top-level | `task-1` | Today's file (or `--date`) |
 | Human nested | `mps-1.1` | Today's file (or `--date`) |
-| Epoch-based | `20260428.2` | Any date (encoded in prefix) |
+| Epoch-based | `20260428.2` | Any date (date encoded in prefix) |

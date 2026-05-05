@@ -20,11 +20,16 @@ MPS::CLI::MPS.class_eval do
   def list(datesign = "today")
     init
     begin
-      dates = if options[:all]
-        store.all_files.map { |f| Date.strptime(File.basename(f)[0, 8], "%Y%m%d") }.uniq.sort
+      all_dates = store.all_files
+                       .map { |f| Date.strptime(File.basename(f)[0, 8], "%Y%m%d") }
+                       .uniq.sort
+      dates = if options[:all] && options[:since]
+        since_date = ::MPS.get_date(options[:since]).to_date
+        all_dates.select { |d| d >= since_date }
+      elsif options[:all]
+        all_dates
       elsif options[:since]
-        date  = ::MPS.get_date(datesign)
-        date_range(options[:since], date)
+        date_range(options[:since], ::MPS.get_date(datesign))
       else
         [::MPS.get_date(datesign).to_date]
       end

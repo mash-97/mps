@@ -105,4 +105,45 @@ class EngineTest < Minitest::Test
     assert_nil result
   end
 
+  # ── old colon-prefix arg syntax (e.g. @task[:pending]) ────────────────────
+
+  def test_parse_colon_prefix_args_does_not_crash
+    content = "@task[:pending]{\n  old style task\n}"
+    elements = parse_content(content)
+    tasks = elements.values.select { |e| e.class == ::MPS::Elements::Task }
+    assert_equal 1, tasks.size
+    assert_equal "old style task", tasks.first.body_str.strip
+  end
+
+  def test_parse_colon_prefix_args_has_default_status
+    content = "@task[:pending]{\n  old style task\n}"
+    elements = parse_content(content)
+    task = elements.values.find { |e| e.class == ::MPS::Elements::Task }
+    # ":pending" is an unrecognized colon-prefix token; status falls back to schema default
+    assert_equal "open", task.parsed_args[:status], "colon-prefix arg falls back to default status"
+    assert task.open?, "task should be considered open"
+  end
+
+  # ── @task nested inside @log (structurally valid) ─────────────────────────
+
+  def test_task_nested_inside_log
+    content = "@log[]{\n  work session\n  @task[]{\n    nested task\n  }\n}"
+    elements = parse_content(content)
+    assert elements.values.any? { |e| e.class == ::MPS::Elements::Log }
+    assert elements.values.any? { |e| e.class == ::MPS::Elements::Task }
+    task = elements.values.find { |e| e.class == ::MPS::Elements::Task }
+    assert_equal "nested task", task.body_str.strip
+  end
+
+  # ── body text with #hashtag is NOT parsed as a tag ─────────────────────────
+
+  def test_hashtag_in_body_is_not_a_mps_tag
+    content = "@log[]{\n  went to the gym #health #fitness\n}"
+    elements = parse_content(content)
+    log_el = elements.values.find { |e| e.class == ::MPS::Elements::Log }
+    refute_nil log_el
+    assert log_el.tags.empty?, "# hash-style body tags should not be parsed as MPS tags"
+    assert_match(/#health/, log_el.body_str)
+  end
+
 end

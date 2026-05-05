@@ -1,17 +1,20 @@
 # frozen_string_literal: true
 
-# Collect all schema-declared attribute flags for the update command.
-# This runs at class-load time so options are available to Thor.
-_all_schema_attrs = ::MPS::Elements.constants
-  .map    { |k| ::MPS::Elements.const_get(k) }
-  .select { |x| x.class == Class }
-  .flat_map { |klass| klass.schema.to_a }
-  .uniq { |name, _| name }
-  .select { |_, defn| defn[:flag] }
-
 MPS::CLI::MPS.class_eval do
+  # Returns all schema-declared attribute definitions across every element type.
+  # Called at class-load time (for method_option registration) and at call time
+  # (inside the update method body). A class method survives both contexts.
+  def self._schema_update_attrs
+    ::MPS::Elements.constants
+      .map    { |k| ::MPS::Elements.const_get(k) }
+      .select { |x| x.class == Class }
+      .flat_map { |klass| klass.schema.to_a }
+      .uniq { |name, _| name }
+      .select { |_, defn| defn[:flag] }
+  end
+
   desc "update REFPATH", "Update an element's attributes in-place"
-  _all_schema_attrs.each do |_name, defn|
+  _schema_update_attrs.each do |_name, defn|
     method_option defn[:flag], type: :string, desc: "Set #{defn[:flag]}"
   end
   method_option :date, type: :string, aliases: "-d",
@@ -21,7 +24,7 @@ MPS::CLI::MPS.class_eval do
     begin
       date = options[:date] ? ::MPS.get_date(options[:date]).to_date : Date.today
       new_attrs = {}
-      _all_schema_attrs.each do |name, defn|
+      self.class._schema_update_attrs.each do |name, defn|
         flag_sym = defn[:flag].tr("-", "_").to_sym
         new_attrs[name] = options[flag_sym] if options[flag_sym]
       end

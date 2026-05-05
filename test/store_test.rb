@@ -223,4 +223,68 @@ class StoreTest < Minitest::Test
       assert_equal DATE_STR, results.first[:date_str]
     end
   end
+
+  # ── epoch-less filenames (e.g. 20241103.mps) ──────────────────────────────
+
+  def test_all_files_includes_epoch_less_names
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(STORAGE_DIR)
+      epoched  = "#{STORAGE_DIR}/20260101.1000000001.mps"
+      no_epoch = "#{STORAGE_DIR}/20260102.mps"
+      FileUtils.touch(epoched)
+      FileUtils.touch(no_epoch)
+      result = store.all_files
+      assert_includes result, epoched
+      assert_includes result, no_epoch
+    end
+  end
+
+  def test_find_files_matches_epoch_less_name
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(STORAGE_DIR)
+      path = "#{STORAGE_DIR}/20260101.mps"
+      FileUtils.touch(path)
+      result = store.find_files(DATE)
+      assert_equal [path], result
+    end
+  end
+
+  # ── non-date filenames are ignored ────────────────────────────────────────
+
+  def test_all_files_ignores_non_date_names
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(STORAGE_DIR)
+      valid    = "#{STORAGE_DIR}/20260101.1000000001.mps"
+      prose    = "#{STORAGE_DIR}/such_a_weird_feeling.mps"
+      FileUtils.touch(valid)
+      FileUtils.touch(prose)
+      result = store.all_files
+      assert_includes result, valid
+      refute_includes result, prose
+    end
+  end
+
+  # ── empty and plain-text files parse without crashing ─────────────────────
+
+  def test_parse_date_empty_file_returns_root_wrapper
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(STORAGE_DIR)
+      File.write(FAKE_PATH, "")
+      result = store.parse_date(DATE)
+      assert_instance_of Hash, result
+      assert result.values.any? { |e| e.is_a?(Elements::MPS) }
+      assert result.values.none? { |e| e.is_a?(Elements::Task) }
+    end
+  end
+
+  def test_parse_date_plain_text_file_returns_root_wrapper
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(STORAGE_DIR)
+      File.write(FAKE_PATH, "this is just plain text, no elements\n")
+      result = store.parse_date(DATE)
+      assert_instance_of Hash, result
+      assert result.values.any? { |e| e.is_a?(Elements::MPS) }
+      assert result.values.none? { |e| e.is_a?(Elements::Task) }
+    end
+  end
 end

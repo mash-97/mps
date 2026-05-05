@@ -2,13 +2,25 @@
 
 MPS::CLI::MPS.class_eval do
   desc "stats [DATESIGN]", "Show element counts and log durations"
-  method_option :since, type: :string, aliases: "-S",
-                        desc: "Stats from SINCE up to DATESIGN"
+  method_option :since,  type: :string,  aliases: "-S", desc: "Stats from SINCE up to DATESIGN"
+  method_option :all,    type: :boolean, aliases: "-a", default: false,
+                         desc: "Stats across all dates"
   def stats(datesign = "today")
     init
     begin
-      date  = ::MPS.get_date(datesign)
-      dates = options[:since] ? date_range(options[:since], date) : [date.to_date]
+      dates = if options[:all] && options[:since]
+        since_date = ::MPS.get_date(options[:since]).to_date
+        store.all_files.map { |f| Date.strptime(File.basename(f)[0, 8], "%Y%m%d") }
+             .uniq.sort.select { |d| d >= since_date }
+      elsif options[:all]
+        store.all_files.map { |f| Date.strptime(File.basename(f)[0, 8], "%Y%m%d") }.uniq.sort
+      elsif options[:since]
+        date  = ::MPS.get_date(datesign)
+        date_range(options[:since], date)
+      else
+        date  = ::MPS.get_date(datesign)
+        [date.to_date]
+      end
 
       total          = Hash.new(0)
       total_log_mins = 0

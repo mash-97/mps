@@ -2,7 +2,9 @@
 
 module MPS
   def self.get_date(str)
-    Chronic.parse(str).to_date
+    result = Chronic.parse(str)
+    raise ArgumentError, "Cannot parse date: #{str.inspect}" unless result
+    result.to_date
   end
 
   def self.get_filename_from_date(date)

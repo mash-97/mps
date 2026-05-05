@@ -140,7 +140,7 @@ module MPS
       new_args        = (new_attr_parts + existing_tags).join(", ")
 
       if raw.empty?
-        old_pat  = /@#{Regexp.escape(type)}\s*\{/
+        old_pat  = /@#{Regexp.escape(type)}(?:\[\])?\s*\{/
         new_open = "@#{type}[#{new_args}]{"
       else
         old_pat  = /@#{Regexp.escape(type)}\[#{Regexp.escape(raw)}\]\s*\{/

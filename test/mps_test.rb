@@ -17,4 +17,15 @@ class MPSTest < Minitest::Test
       check = check.next
     end
   end
+
+  def test_get_date_raises_on_unparseable_string
+    assert_raises(ArgumentError) { MPS.get_date("--all") }
+    assert_raises(ArgumentError) { MPS.get_date("not-a-date-at-all-xyz") }
+  end
+
+  def test_get_date_returns_date_for_known_expressions
+    assert_instance_of Date, MPS.get_date("today")
+    assert_instance_of Date, MPS.get_date("yesterday")
+    assert_instance_of Date, MPS.get_date("2026-01-01")
+  end
 end

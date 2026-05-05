@@ -143,4 +143,33 @@ class StoreRewriteTest < Minitest::Test
       assert_equal "done", task.parsed_args[:status]
     end
   end
+
+  # ── rewrite element with empty brackets (@type[]{ form) ──────────────────────
+
+  def test_rewrite_empty_bracket_element
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(STORAGE_DIR)
+      File.write(FAKE_FILE, "@task[]{\n  empty bracket task\n}\n")
+      result = store.rewrite_element("#{DATE_STR}.1", { status: "done" })
+      assert result, "rewrite_element should succeed for @task[]{} form"
+      parsed = store.parse_date(DATE)
+      task = parsed.values.find { |e| e.is_a?(Elements::Task) }
+      assert_equal "done", task.parsed_args[:status]
+    end
+  end
+
+  def test_rewrite_empty_bracket_preserves_other_elements
+    FakeFS.with_fresh do
+      FileUtils.mkdir_p(STORAGE_DIR)
+      content = "@task[]{\n  first\n}\n@task[work]{\n  second\n}\n"
+      File.write(FAKE_FILE, content)
+      store.rewrite_element("#{DATE_STR}.1", { status: "done" })
+      parsed = store.parse_date(DATE)
+      first  = parsed.values.find { |e| e.is_a?(Elements::Task) && e.body_str.strip == "first" }
+      second = parsed.values.find { |e| e.is_a?(Elements::Task) && e.body_str.strip == "second" }
+      assert_equal "done", first.parsed_args[:status]
+      # second task had no explicit status — keeps default "open" (unchanged)
+      refute_equal "done", second.parsed_args[:status]
+    end
+  end
 end

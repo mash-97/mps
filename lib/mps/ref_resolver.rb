@@ -56,6 +56,7 @@ module MPS
         next if depth <= 0  # skip synthetic root wrapper
 
         if depth == 1
+          next if el.is_a?(Engines::Parser::Unknown)
           type_name = el.class::SIGNATURE_STAMP
           type_counters[type_name] += 1
           human = "#{type_name}-#{type_counters[type_name]}"

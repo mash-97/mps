@@ -98,7 +98,7 @@ module MPS
       return false unless el
       return false if el.is_a?(Engines::Parser::Unknown)
 
-      _rewrite_element_in_file(path, el, new_attrs)
+      _rewrite_element_in_file(path, el, epoch_ref, elements, new_attrs)
     end
 
     private
@@ -128,16 +128,23 @@ module MPS
       end
     end
 
-    def _rewrite_element_in_file(path, el, new_attrs)
+    # Rewrites the @type[args]{ opener for a specific element in +path+.
+    #
+    # When two elements share identical raw_args (e.g. both `@task[work, status: open]`),
+    # a naive sub() would always patch the first occurrence regardless of which element
+    # was targeted. To avoid this, we sort all elements by their numeric ref-path parts
+    # (which mirrors the order openers appear in the file) and count how many elements
+    # with the same (type, raw_args) precede our target. We then replace exactly that
+    # occurrence index in the file text.
+    def _rewrite_element_in_file(path, el, epoch_ref, elements, new_attrs)
       content = File.read(path)
       type    = el.class::SIGNATURE_STAMP
       raw     = el.raw_args.to_s
 
-      # Merge new_attrs over existing parsed_args (preserve tags)
-      existing_tags   = el.tags.dup
-      merged          = el.parsed_args.reject { |k, _| k == :tags }.merge(new_attrs)
-      new_attr_parts  = merged.reject { |_, v| v.nil? }.map { |k, v| "#{k}: #{v}" }
-      new_args        = (new_attr_parts + existing_tags).join(", ")
+      existing_tags  = el.tags.dup
+      merged         = el.parsed_args.reject { |k, _| k == :tags }.merge(new_attrs)
+      new_attr_parts = merged.reject { |_, v| v.nil? }.map { |k, v| "#{k}: #{v}" }
+      new_args       = (new_attr_parts + existing_tags).join(", ")
 
       if raw.empty?
         old_pat  = /@#{Regexp.escape(type)}(?:\[\])?\s*\{/
@@ -147,7 +154,34 @@ module MPS
         new_open = "@#{type}[#{new_args}]{"
       end
 
-      new_content = content.sub(old_pat, new_open)
+      # Count how many elements with the same (type, raw_args) appear before our
+      # target in document order (sorted by numeric ref-path parts).
+      sorted_refs = elements.keys.sort_by { |k| k.split(".").map(&:to_i) }
+      occurrence = 0
+      sorted_refs.each do |key|
+        break if key == epoch_ref
+        next unless key.include?(".")
+        other = elements[key]
+        next if other.is_a?(Engines::Parser::Unknown)
+        if other.class::SIGNATURE_STAMP == type && other.raw_args == raw
+          occurrence += 1
+        end
+      end
+
+      # Find all match positions and replace only the (occurrence)-th one (0-indexed).
+      positions = []
+      pos = 0
+      while (m = old_pat.match(content, pos))
+        positions << m.begin(0)
+        pos = m.end(0)
+      end
+
+      return false if occurrence >= positions.size
+
+      m = old_pat.match(content, positions[occurrence])
+      return false unless m
+
+      new_content = content[0, m.begin(0)] + new_open + content[m.end(0)..]
       return false if new_content == content
 
       tmp = "#{path}.tmp.#{Process.pid}"

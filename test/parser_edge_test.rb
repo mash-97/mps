@@ -365,4 +365,138 @@ class ParserEdgeTest < Minitest::Test
     assert_equal 30, log.duration_minutes
     assert_equal "0h30m", log.duration_str
   end
+
+  # ── 20260501: task-in-task (the nested_test.mps pattern) ────────────────────
+
+  def test_task_in_task_total_elements
+    all = parse("20260501.1800000001.mps")
+    els = non_root(all)
+    # outer task + 3 child tasks + 3 child notes = 7 (root @mps excluded by non_root)
+    assert_equal 7, els.size, "expected 7 non-root elements, got #{els.size}"
+  end
+
+  def test_task_in_task_task_count
+    els = non_root(parse("20260501.1800000001.mps"))
+    assert_equal 4, els.count { |e| e.is_a?(Elements::Task) }, "1 outer + 3 nested tasks"
+  end
+
+  def test_task_in_task_note_count
+    els = non_root(parse("20260501.1800000001.mps"))
+    assert_equal 3, els.count { |e| e.is_a?(Elements::Note) }, "3 notes nested inside dev task"
+  end
+
+  def test_task_in_task_outer_task_status_open
+    all = parse("20260501.1800000001.mps")
+    outer = all.values.find { |e| e.is_a?(Elements::Task) && e.raw_args == "status: open" }
+    refute_nil outer, "outer task with status: open not found"
+    assert outer.open?
+  end
+
+  def test_task_in_task_inner_tasks_default_open
+    all = parse("20260501.1800000001.mps")
+    inner_tasks = all.values.select { |e| e.is_a?(Elements::Task) && e.raw_args == "" }
+    assert_equal 3, inner_tasks.size, "3 inner tasks with no args"
+    assert inner_tasks.all?(&:open?), "all no-args tasks default to open"
+  end
+
+  def test_task_in_task_ref_depths
+    all = parse("20260501.1800000001.mps")
+    # outer task: epoch.1 → 2 segments
+    outer_ref = all.find { |_, e| e.is_a?(Elements::Task) && e.raw_args == "status: open" }&.first
+    assert_equal 2, outer_ref.split(".").size, "outer task ref has 2 segments (epoch.1)"
+    # child tasks: epoch.1.X → 3 segments
+    child_task_refs = all.select { |_, e| e.is_a?(Elements::Task) && e.raw_args == "" }.keys
+    assert child_task_refs.all? { |r| r.split(".").size == 3 },
+           "all 3 no-args child tasks have 3-segment refs"
+    # notes: epoch.1.3.X → 4 segments
+    note_refs = all.select { |_, e| e.is_a?(Elements::Note) }.keys
+    assert note_refs.all? { |r| r.split(".").size == 4 },
+           "all notes have 4-segment refs (epoch.1.3.X)"
+  end
+
+  def test_task_in_task_leaf_bodies_clean
+    all = parse("20260501.1800000001.mps")
+    bugs     = all.values.find { |e| e.is_a?(Elements::Task) && e.body_str.include?("bugs") }
+    meetings = all.values.find { |e| e.is_a?(Elements::Task) && e.body_str.include?("meetings") }
+    refute_nil bugs,     "bugs task found"
+    refute_nil meetings, "meetings task found"
+    assert_equal "Several bugs to be fixed",        bugs.body_str.strip
+    assert_equal "Several meetings to be attended", meetings.body_str.strip
+  end
+
+  def test_task_in_task_outer_body_contains_child_syntax
+    all = parse("20260501.1800000001.mps")
+    outer = all.values.find { |e| e.is_a?(Elements::Task) && e.raw_args == "status: open" }
+    assert_match(/@task\{/, outer.body_str, "outer task body includes literal @task{ syntax")
+    assert_match(/These items to be done by monday/, outer.body_str, "own text present")
+  end
+
+  def test_task_in_task_dev_task_body_contains_note_syntax
+    all = parse("20260501.1800000001.mps")
+    dev_task = all.values.find { |e| e.is_a?(Elements::Task) && e.body_str.include?("dev works") }
+    refute_nil dev_task
+    assert_match(/@note\{/, dev_task.body_str, "dev task body includes @note{ syntax")
+    assert_match(/Several dev works to be done/, dev_task.body_str)
+  end
+
+  def test_task_in_task_note_bodies
+    all = parse("20260501.1800000001.mps")
+    notes = all.values.select { |e| e.is_a?(Elements::Note) }
+    bodies = notes.map { |n| n.body_str.strip }.sort
+    assert_includes bodies, "Check for items not done"
+    assert_includes bodies, "Check for peoples support"
+    assert_includes bodies, "Say No to not aligned with my goal"
+  end
+
+  # ── 20260502: tagged @mps and note-in-task ───────────────────────────────────
+
+  def test_tagged_mps_total_elements
+    els = non_root(parse("20260502.1800000002.mps"))
+    # sprint mps excluded by non_root; remaining: task+note+task in sprint + done-task + note-in-task + bare-note
+    assert_equal 6, els.size, "6 non-mps elements"
+  end
+
+  def test_tagged_mps_block_has_two_tags
+    all = parse("20260502.1800000002.mps")
+    sprint_mps = all.values.find { |e| e.is_a?(Elements::MPS) && e.raw_args == "sprint-42, current" }
+    refute_nil sprint_mps, "sprint mps block found"
+    assert_includes sprint_mps.tags, "sprint-42"
+    assert_includes sprint_mps.tags, "current"
+  end
+
+  def test_tagged_mps_note_inside_has_review_tag
+    all = parse("20260502.1800000002.mps")
+    note = all.values.find { |e| e.is_a?(Elements::Note) && e.body_str.include?("Sprint review") }
+    refute_nil note
+    assert_includes note.tags, "review"
+  end
+
+  def test_tagged_mps_done_task_inside_sprint
+    all = parse("20260502.1800000002.mps")
+    done = all.values.find { |e| e.is_a?(Elements::Task) && e.done? && e.tags.include?("backend") }
+    refute_nil done, "done backend task inside sprint mps found"
+    assert_equal "Completed backend task", done.body_str.strip
+  end
+
+  def test_note_in_task_ref_depth
+    all = parse("20260502.1800000002.mps")
+    note_in_task = all.values.find { |e| e.is_a?(Elements::Note) && e.body_str.include?("Note inside done task") }
+    refute_nil note_in_task
+    ref = all.find { |_, e| e.is_a?(Elements::Note) && e.body_str.include?("Note inside done task") }&.first
+    assert_equal 3, ref.split(".").size, "note inside task has 3-segment ref (epoch.2.1)"
+  end
+
+  def test_bare_top_level_note_ref_depth
+    all = parse("20260502.1800000002.mps")
+    ref = all.find { |_, e| e.is_a?(Elements::Note) && e.body_str.strip == "Bare top-level note" }&.first
+    refute_nil ref
+    assert_equal 2, ref.split(".").size, "bare note at top level has 2-segment ref (epoch.N)"
+  end
+
+  def test_tagged_mps_task_and_note_counts
+    all = parse("20260502.1800000002.mps")
+    assert_equal 3, all.values.count { |e| e.is_a?(Elements::Task) }, "3 tasks total"
+    assert_equal 3, all.values.count { |e| e.is_a?(Elements::Note) }, "3 notes total"
+    assert_equal 2, all.values.count { |e| e.is_a?(Elements::MPS) },  "2 mps elements (root + sprint)"
+  end
 end

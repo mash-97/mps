@@ -146,4 +146,74 @@ class EngineTest < Minitest::Test
     assert_match(/#health/, log_el.body_str)
   end
 
+  # ── task-in-task nesting ─────────────────────────────────────────────────────
+
+  def test_task_nested_in_task_both_parsed
+    content = "@task[]{\n  outer task\n  @task[]{\n    inner task\n  }\n}"
+    elements = parse_content(content)
+    tasks = elements.values.select { |e| e.class == ::MPS::Elements::Task }
+    assert_equal 2, tasks.size, "2 tasks: outer and inner"
+    inner = tasks.find { |e| e.body_str.strip == "inner task" }
+    outer = tasks.find { |e| e.body_str.include?("@task") }
+    refute_nil inner, "inner task has clean body"
+    refute_nil outer, "outer task body includes child @task syntax"
+  end
+
+  def test_task_nested_in_task_ref_depths
+    content = "@task[]{\n  outer\n  @task[]{\n    inner\n  }\n}"
+    elements = parse_content(content)
+    task_refs = elements.select { |_, e| e.class == ::MPS::Elements::Task }.keys
+    assert task_refs.any? { |r| r.split(".").size == 2 }, "outer task has 2-segment ref"
+    assert task_refs.any? { |r| r.split(".").size == 3 }, "inner task has 3-segment ref"
+  end
+
+  def test_note_nested_in_task_parsed
+    content = "@task[]{\n  task body\n  @note[]{\n    inner note\n  }\n}"
+    elements = parse_content(content)
+    assert elements.values.any? { |e| e.class == ::MPS::Elements::Task }, "task exists"
+    notes = elements.values.select { |e| e.class == ::MPS::Elements::Note }
+    assert_equal 1, notes.size
+    assert_equal "inner note", notes.first.body_str.strip
+  end
+
+  def test_full_nested_test_mps_pattern
+    # Mirrors nested_test.mps: outer task with 3 child tasks, third child has 3 notes.
+    content = <<~MPS
+      @task[status: open]{
+        Items to do
+
+        @task[]{ Bug fixes }
+        @task[]{ Meetings }
+        @task[]{
+          Dev work
+
+          @note[]{ Note one }
+          @note[]{ Note two }
+          @note[]{ Note three }
+        }
+      }
+    MPS
+    elements = parse_content(content)
+    tasks = elements.values.select { |e| e.class == ::MPS::Elements::Task }
+    notes = elements.values.select { |e| e.class == ::MPS::Elements::Note }
+    assert_equal 4, tasks.size, "4 tasks: 1 outer + 3 children"
+    assert_equal 3, notes.size, "3 notes nested inside third child"
+    # The note refs should all be 4-segment: epoch.1.3.X
+    note_refs = elements.select { |_, e| e.class == ::MPS::Elements::Note }.keys
+    assert note_refs.all? { |r| r.split(".").size == 4 }, "all notes have 4-segment refs"
+    # The outer task has status: open and no tags
+    outer = elements.values.find { |e| e.class == ::MPS::Elements::Task && e.raw_args == "status: open" }
+    refute_nil outer
+    assert outer.open?
+    assert_equal [], outer.tags
+  end
+
+  def test_task_in_task_outer_body_contains_child_element_syntax
+    content = "@task[]{\n  own text\n  @task[]{ child body }\n}"
+    elements = parse_content(content)
+    outer = elements.values.find { |e| e.class == ::MPS::Elements::Task && e.body_str.include?("own text") }
+    refute_nil outer
+    assert_match(/@task/, outer.body_str, "outer body contains @task syntax of child")
+  end
+
 end
